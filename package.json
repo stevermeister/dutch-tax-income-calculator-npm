@@ -1,0 +1,26 @@
+{
+  "name": "dutch-tax-income-calculator",
+  "version": "0.1.0",
+  "description": "NPM package with functionality to calculate Dutch Tax Income",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stevermeister/dutch-tax-income-calculator-npm.git"
+  },
+  "keywords": [
+    "tax",
+    "dutch",
+    "income",
+    "calculation",
+    "logic"
+  ],
+  "author": "@stevermeister",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/stevermeister/dutch-tax-income-calculator-npm/issues"
+  },
+  "homepage": "https://github.com/stevermeister/dutch-tax-income-calculator-npm#readme"
+}
