@@ -1,13 +1,6 @@
 import constants from './data.json';
 
 class SalaryPaycheck {
-  grossYear = 0;
-  grossMonth = 0;
-  grossWeek = 0;
-  grossDay = 0;
-  grossHour = 0;
-  taxFreeYear = 0;
-
   /**
    * For calculation instructions:
    * https://www.belastingdienst.nl/wps/wcm/connect/nl/zoeken/zoeken?q=Rekenvoorschriften+voor+de+geautomatiseerde+loonadministratie
@@ -20,6 +13,7 @@ class SalaryPaycheck {
    */
   constructor(salaryInput, startFrom, year, ruling) {
     const { income, allowance, socialSecurity, older, hours } = salaryInput;
+    this.grossYear = this.grossMonth = this.grossWeek = this.grossDay = this.grossHour = 0;
     this['gross' + startFrom] = income;
     let grossYear = this.grossYear + this.grossMonth * 12 + this.grossWeek * constants.workingWeeks;
     grossYear += this.grossDay * constants.workingDays + this.grossHour * constants.workingWeeks * hours;
@@ -34,6 +28,7 @@ class SalaryPaycheck {
     this.grossDay = SalaryPaycheck.getAmountDay(grossYear);
     this.grossHour = SalaryPaycheck.getAmountHour(grossYear, hours);
 
+    this.taxFreeYear = 0;
     this.taxableYear = grossYear - this.grossAllowance;
 
     if (ruling.checked) {
