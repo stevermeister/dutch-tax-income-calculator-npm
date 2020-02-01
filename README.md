@@ -17,10 +17,9 @@ const paycheck = new SalaryPaycheck({
     allowance: false,
     socialSecurity: true,
     older: false,
-    hours: 40
+    hours: 40,
 }, 'Year', 2020, {
     checked: false,
-    choice: "normal"
 });
 console.log(paycheck);
 /* OUTPUT:

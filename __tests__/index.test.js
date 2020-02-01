@@ -14,10 +14,9 @@ const checkCalculation = async (year, callback) => {
       allowance: false,
       socialSecurity: true,
       older: false,
-      hours: 40
+      hours: 40,
     }, 'Month', year, {
       checked: false,
-      choice: "normal"
     });
     data.taxCreditMonth = data.youngerWithoutPayrollTaxCredit - data.youngerWithPayrollTaxCredit;
     data.generalCreditMonth = Math.abs(data.taxCreditMonth - data.youngerDeductedLabourCredit);
@@ -40,10 +39,9 @@ const checkCalculation = async (year, callback) => {
       allowance: false,
       socialSecurity: true,
       older: true,
-      hours: 40
+      hours: 40,
     }, 'Month', year, {
       checked: false,
-      choice: "normal"
     });
     data.taxCreditMonth = data.olderWithoutPayrollTaxCredit - data.olderWithPayrollTaxCredit;
     data.generalCreditMonth = Math.abs(data.taxCreditMonth - data.youngerDeductedLabourCredit);

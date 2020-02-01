@@ -1,0 +1,32 @@
+---
+name: Continuous Integration
+
+on:
+  pull_request
+
+jobs:
+  test:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@master
+      - name: Install with NPM
+        id: installation
+        run: |
+          npm ci --no-optional
+      - name: Run Tests
+        id: testing
+        run: |
+          npm run test:ci
+      - name: Add Coverage Report
+        id: coverage-report
+        suses: 5monkeys/cobertura-action@master
+        with:
+          path: coverage/cobertura-coverage.xml
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          minimum_coverage: 80
+      - name: Upload Artifacts
+        id: upload-artifacts
+        uses: actions/upload-artifact@master
+        with:
+          name: artifacts
+          path: coverage

@@ -33,6 +33,9 @@
       "/node_modules/",
       "/__tests__/"
     ],
+    "coverageReporters": [
+      "json", "lcov", "text", "cobertura"
+    ],
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/__tests__/helper.js"
