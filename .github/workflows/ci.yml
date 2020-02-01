@@ -19,7 +19,7 @@ jobs:
           npm run test:ci
       - name: Add Coverage Report
         id: coverage-report
-        suses: 5monkeys/cobertura-action@master
+        uses: 5monkeys/cobertura-action@master
         with:
           path: coverage/cobertura-coverage.xml
           repo_token: ${{ secrets.GITHUB_TOKEN }}
