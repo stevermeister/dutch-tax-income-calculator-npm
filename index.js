@@ -22,7 +22,7 @@ class SalaryPaycheck {
     }
 
     this.grossAllowance = (allowance) ? SalaryPaycheck.getHolidayAllowance(grossYear) : 0;
-    this.grossYear = truncateNumber(grossYear, 2);
+    this.grossYear = roundNumber(grossYear, 2);
     this.grossMonth = SalaryPaycheck.getAmountMonth(grossYear);
     this.grossWeek = SalaryPaycheck.getAmountWeek(grossYear);
     this.grossDay = SalaryPaycheck.getAmountDay(grossYear);
@@ -45,14 +45,14 @@ class SalaryPaycheck {
       }
     }
 
-    this.taxFreeYear = truncateNumber(this.taxFreeYear, 2);
+    this.taxFreeYear = roundNumber(this.taxFreeYear, 2);
     this.taxFree = SalaryPaycheck.getTaxFree(this.taxFreeYear, grossYear);
-    this.taxableYear = truncateNumber(this.taxableYear, 2);
+    this.taxableYear = roundNumber(this.taxableYear, 2);
     this.payrollTax = -1 * SalaryPaycheck.getPayrollTax(year, this.taxableYear);
     this.payrollTaxMonth = SalaryPaycheck.getAmountMonth(this.payrollTax);
     this.socialTax = (socialSecurity) ? -1 * SalaryPaycheck.getSocialTax(year, this.taxableYear, older) : 0;
     this.socialTaxMonth = SalaryPaycheck.getAmountMonth(this.socialTax);
-    this.taxWithoutCredit = truncateNumber(this.payrollTax + this.socialTax, 2);
+    this.taxWithoutCredit = roundNumber(this.payrollTax + this.socialTax, 2);
     this.taxWithoutCreditMonth = SalaryPaycheck.getAmountMonth(this.taxWithoutCredit);
     let socialCredit = SalaryPaycheck.getSocialCredit(year, older, socialSecurity);
     this.labourCredit = SalaryPaycheck.getLabourCredit(year, this.taxableYear, socialCredit);
@@ -63,9 +63,9 @@ class SalaryPaycheck {
       this.generalCredit = -1 * (this.taxWithoutCredit + this.labourCredit);
     }
     this.generalCreditMonth = SalaryPaycheck.getAmountMonth(this.generalCredit);
-    this.taxCredit = truncateNumber(this.labourCredit + this.generalCredit, 2);
+    this.taxCredit = roundNumber(this.labourCredit + this.generalCredit, 2);
     this.taxCreditMonth = SalaryPaycheck.getAmountMonth(this.taxCredit);
-    this.incomeTax = truncateNumber(this.taxWithoutCredit + this.taxCredit, 2);
+    this.incomeTax = roundNumber(this.taxWithoutCredit + this.taxCredit, 2);
     this.incomeTaxMonth = SalaryPaycheck.getAmountMonth(this.incomeTax);
     this.netYear = this.taxableYear + this.incomeTax + this.taxFreeYear;
     this.netAllowance = (allowance) ? SalaryPaycheck.getHolidayAllowance(this.netYear) : 0;
@@ -77,31 +77,31 @@ class SalaryPaycheck {
   }
 
   static getHolidayAllowance(amountYear) {
-    return truncateNumber(amountYear * (0.08 / 1.08), 2); // Vakantiegeld (8%)
+    return roundNumber(amountYear * (0.08 / 1.08), 2); // Vakantiegeld (8%)
   }
 
   static getTaxFree(taxFreeYear, grossYear) {
-    return truncateNumber(taxFreeYear / grossYear * 100, 2);
+    return roundNumber(taxFreeYear / grossYear * 100, 2);
   }
 
   static getNetYear(taxableYear, incomeTax, taxFreeYear) {
-    return truncateNumber(taxableYear + incomeTax + taxFreeYear, 2);
+    return roundNumber(taxableYear + incomeTax + taxFreeYear, 2);
   }
 
   static getAmountMonth(amountYear) {
-    return truncateNumber(amountYear / 12, 2);
+    return roundNumber(amountYear / 12, 2);
   }
 
   static getAmountWeek(amountYear) {
-    return truncateNumber(amountYear / constants.workingWeeks, 2);
+    return roundNumber(amountYear / constants.workingWeeks, 2);
   }
 
   static getAmountDay(amountYear) {
-    return truncateNumber(amountYear / constants.workingDays, 2);
+    return roundNumber(amountYear / constants.workingDays, 2);
   }
 
   static getAmountHour(amountYear, hours) {
-    return truncateNumber(amountYear / (constants.workingWeeks * hours), 2);
+    return roundNumber(amountYear / (constants.workingWeeks * hours), 2);
   }
 
   /**
@@ -234,15 +234,15 @@ class SalaryPaycheck {
       isPercent = tax != 0 && tax > -1 && tax < 1; // Check if rate is percentage or fixed
       if (salary <= delta) {
         if (isPercent) {
-          amount += truncateNumber(salary * tax, 2); // Round down at 2 decimal places
+          amount += roundNumber(salary * tax, 2); // Round down at 2 decimal places
         } else {
           amount = tax;
         }
-        amount = truncateNumber(amount, 2);
+        amount = roundNumber(amount, 2);
         return true; // Break loop when reach last bracket
       } else {
         if (isPercent) {
-          amount += truncateNumber(delta * tax, 2);
+          amount += roundNumber(delta * tax, 2);
         } else {
           amount = tax;
         }
@@ -254,14 +254,13 @@ class SalaryPaycheck {
 }
 
 /**
- * Round down a number to the specified decimal places
+ * Round a number to the specified decimal places
  *
- * @param {number} value Amount to be truncated
- * @param {number} [places] Decimal places to truncate
+ * @param {number} value Amount to be rounded
+ * @param {number} [places] Decimal places to rounded
  */
-const truncateNumber = (value, places = 2) => {
-  const multiplier = Math.pow(10, places);
-  return Math.trunc(value * multiplier + Number.EPSILON) / multiplier;
+const roundNumber = (value, places = 2) => {
+  return Number(value.toFixed(places));
 }
 
 module.exports = {
