@@ -1,4 +1,4 @@
-import constants from './data.json';
+const constants = require('./data.json');
 
 class SalaryPaycheck {
   /**
@@ -22,7 +22,7 @@ class SalaryPaycheck {
     }
 
     this.grossAllowance = (allowance) ? SalaryPaycheck.getHolidayAllowance(grossYear) : 0;
-    this.grossYear = ~~(grossYear);
+    this.grossYear = roundNumber(grossYear, 2);
     this.grossMonth = SalaryPaycheck.getAmountMonth(grossYear);
     this.grossWeek = SalaryPaycheck.getAmountWeek(grossYear);
     this.grossDay = SalaryPaycheck.getAmountDay(grossYear);
@@ -45,15 +45,27 @@ class SalaryPaycheck {
       }
     }
 
-    this.taxFreeYear = ~~(this.taxFreeYear);
+    this.taxFreeYear = roundNumber(this.taxFreeYear, 2);
     this.taxFree = SalaryPaycheck.getTaxFree(this.taxFreeYear, grossYear);
-    this.taxableYear = ~~(this.taxableYear);
+    this.taxableYear = roundNumber(this.taxableYear, 2);
     this.payrollTax = -1 * SalaryPaycheck.getPayrollTax(year, this.taxableYear);
+    this.payrollTaxMonth = SalaryPaycheck.getAmountMonth(this.payrollTax);
     this.socialTax = (socialSecurity) ? -1 * SalaryPaycheck.getSocialTax(year, this.taxableYear, older) : 0;
+    this.socialTaxMonth = SalaryPaycheck.getAmountMonth(this.socialTax);
+    this.taxWithoutCredit = roundNumber(this.payrollTax + this.socialTax, 2);
+    this.taxWithoutCreditMonth = SalaryPaycheck.getAmountMonth(this.taxWithoutCredit);
     let socialCredit = SalaryPaycheck.getSocialCredit(year, older, socialSecurity);
-    this.generalCredit = SalaryPaycheck.getGeneralCredit(year, this.taxableYear, socialCredit);
     this.labourCredit = SalaryPaycheck.getLabourCredit(year, this.taxableYear, socialCredit);
-    this.incomeTax = SalaryPaycheck.getIncomeTax(this.payrollTax, this.socialTax, this.generalCredit, this.labourCredit);
+    this.labourCreditMonth = SalaryPaycheck.getAmountMonth(this.labourCredit);
+    this.generalCredit = SalaryPaycheck.getGeneralCredit(year, this.taxableYear, older, socialCredit);
+    if (this.taxWithoutCredit + this.labourCredit + this.generalCredit > 0
+        || (older && this.taxableYear < constants.lowWageThreshold[year] / socialCredit)) {
+      this.generalCredit = -1 * (this.taxWithoutCredit + this.labourCredit);
+    }
+    this.generalCreditMonth = SalaryPaycheck.getAmountMonth(this.generalCredit);
+    this.taxCredit = roundNumber(this.labourCredit + this.generalCredit, 2);
+    this.taxCreditMonth = SalaryPaycheck.getAmountMonth(this.taxCredit);
+    this.incomeTax = roundNumber(this.taxWithoutCredit + this.taxCredit, 2);
     this.incomeTaxMonth = SalaryPaycheck.getAmountMonth(this.incomeTax);
     this.netYear = this.taxableYear + this.incomeTax + this.taxFreeYear;
     this.netAllowance = (allowance) ? SalaryPaycheck.getHolidayAllowance(this.netYear) : 0;
@@ -65,36 +77,31 @@ class SalaryPaycheck {
   }
 
   static getHolidayAllowance(amountYear) {
-    return ~~(amountYear * (0.08 / 1.08)); // Vakantiegeld (8%)
+    return roundNumber(amountYear * (0.08 / 1.08), 2); // Vakantiegeld (8%)
   }
 
   static getTaxFree(taxFreeYear, grossYear) {
-    return ~~(taxFreeYear / grossYear * 100);
-  }
-
-  static getIncomeTax(payrollTax, socialTax, generalCredit, labourCredit) {
-    let incomeTax = ~~(payrollTax + socialTax + generalCredit + labourCredit);
-    return (incomeTax < 0) ? incomeTax : 0;
+    return roundNumber(taxFreeYear / grossYear * 100, 2);
   }
 
   static getNetYear(taxableYear, incomeTax, taxFreeYear) {
-    return ~~(taxableYear + incomeTax + taxFreeYear);
+    return roundNumber(taxableYear + incomeTax + taxFreeYear, 2);
   }
 
   static getAmountMonth(amountYear) {
-    return ~~(amountYear / 12);
+    return roundNumber(amountYear / 12, 2);
   }
 
   static getAmountWeek(amountYear) {
-    return ~~(amountYear / constants.workingWeeks);
+    return roundNumber(amountYear / constants.workingWeeks, 2);
   }
 
   static getAmountDay(amountYear) {
-    return ~~(amountYear / constants.workingDays);
+    return roundNumber(amountYear / constants.workingDays, 2);
   }
 
   static getAmountHour(amountYear, hours) {
-    return ~~(amountYear / (constants.workingWeeks * hours));
+    return roundNumber(amountYear / (constants.workingWeeks * hours), 2);
   }
 
   /**
@@ -144,11 +151,17 @@ class SalaryPaycheck {
    * 
    * @param {string} year Year to retrieve information from
    * @param {number} salary Taxable wage that will be used for calculation
+   * @param {boolean} older Whether is after retirement age or not
    * @param {number} [multiplier] Scalar value to multiple against final result
    * @returns {number} The General Tax Credit after calculating proper bracket amount
    */
-  static getGeneralCredit(year, salary, multiplier = 1) {
-    return SalaryPaycheck.getRates(constants.generalCredit[year], salary, "rate", multiplier);
+  static getGeneralCredit(year, salary, older, multiplier = 1) {
+    let generalCredit = SalaryPaycheck.getRates(constants.generalCredit[year], salary, "rate", multiplier);
+    // Additional credit for worker that reached retirement age
+    if (older) {
+      generalCredit += SalaryPaycheck.getRates(constants.elderCredit[year], salary, "rate");
+    }
+    return generalCredit;
   }
 
   /**
@@ -161,6 +174,10 @@ class SalaryPaycheck {
    * @returns {number} The Labour Tax Credit after calculating proper bracket amount
    */
   static getLabourCredit(year, salary, multiplier = 1) {
+    // TODO: this low wage threshold should be confirmed
+    if (salary < constants.lowWageThreshold[year] / multiplier) {
+      return 0;
+    }
     return SalaryPaycheck.getRates(constants.labourCredit[year], salary, "rate", multiplier);
   }
 
@@ -173,7 +190,7 @@ class SalaryPaycheck {
    * @param {boolean} socialSecurity Whether social security will be considered or not
    * @returns {number} Social Security contribution percentage to apply to wage credit
    */
-  static getSocialCredit(year, older) {
+  static getSocialCredit(year, older, socialSecurity) {
     /*
     * JSON properties for socialPercent object
     * rate: Higher full rate including social contributions to be used to get proportion
@@ -182,7 +199,9 @@ class SalaryPaycheck {
     */
     let bracket = constants.socialPercent[year][0],
       percentage = 1;
-    if (older) {
+    if (!socialSecurity) {
+      percentage = (bracket.rate - bracket.social) / bracket.rate; // Removing AOW + Anw + Wlz from total
+    } else if (older) {
       percentage = (bracket.rate + bracket.older - bracket.social) / bracket.rate; // Removing only AOW from total
     }
     return percentage;
@@ -215,14 +234,15 @@ class SalaryPaycheck {
       isPercent = tax != 0 && tax > -1 && tax < 1; // Check if rate is percentage or fixed
       if (salary <= delta) {
         if (isPercent) {
-          amount += Math.trunc(salary * 100 * tax) / 100; // Round down at 2 decimal places
+          amount += roundNumber(salary * tax, 2); // Round down at 2 decimal places
         } else {
           amount = tax;
         }
+        amount = roundNumber(amount, 2);
         return true; // Break loop when reach last bracket
       } else {
         if (isPercent) {
-          amount += delta * tax;
+          amount += roundNumber(delta * tax, 2);
         } else {
           amount = tax;
         }
@@ -233,7 +253,17 @@ class SalaryPaycheck {
   }
 }
 
-export {
+/**
+ * Round a number to the specified decimal places
+ *
+ * @param {number} value Amount to be rounded
+ * @param {number} [places] Decimal places to rounded
+ */
+const roundNumber = (value, places = 2) => {
+  return Number(value.toFixed(places));
+}
+
+module.exports = {
   SalaryPaycheck,
   constants,
 }

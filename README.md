@@ -4,23 +4,22 @@ NPM package with functionality to calculate Dutch Tax Income
 ## Installation
 
 ```bash
-npm install --save dutch-tax-income-calculator-npm
+npm install --save dutch-tax-income-calculator
 ```
 
 ## Usage
 
 ```javascript
-import { SalaryPaycheck } from 'dutch-tax-income-calculator-npm';
+import { SalaryPaycheck } from 'dutch-tax-income-calculator';
 
 const paycheck = new SalaryPaycheck({
     income: 36000,
     allowance: false,
     socialSecurity: true,
     older: false,
-    hours: 40
+    hours: 40,
 }, 'Year', 2020, {
     checked: false,
-    choice: "normal"
 });
 console.log(paycheck);
 /* OUTPUT:
