@@ -602,6 +602,37 @@
         "min":98604,
         "rate":0
       }
+    ],
+    "2021":[
+      {
+        "bracket":1,
+        "min":0,
+        "max":10108,
+        "rate":0.04581
+      },
+      {
+        "bracket":2,
+        "min":10108,
+        "max":21835,
+        "rate":0.28771
+      },
+      {
+        "bracket":3,
+        "min":21835,
+        "max":35652,
+        "rate":0.02663
+      },
+      {
+        "bracket":4,
+        "min":35652,
+        "max":105736,
+        "rate":-0.06
+      },
+      {
+        "bracket":5,
+        "min":105736,
+        "rate":0
+      }
     ]
   },
   "lowWageThreshold":{
