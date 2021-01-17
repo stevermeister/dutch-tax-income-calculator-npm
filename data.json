@@ -42,6 +42,11 @@
       "normal":38347,
       "young":29149,
       "research":0
+    },
+    "2021":{
+      "normal":38961, 
+      "young":29616, 
+      "research":0
     }
   },
   "payrollTax":{
