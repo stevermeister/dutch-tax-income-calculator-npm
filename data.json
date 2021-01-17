@@ -11,7 +11,7 @@
   ],
   "defaultWorkingHours":40,
   "workingWeeks":52,
-  "workingDays":260,
+  "workingDays":255,
   "rulingThreshold":{
     "2015":{
       "normal":36705,
@@ -180,7 +180,7 @@
         "bracket":1,
         "min":0,
         "max":34711,
-        "rate":0.097
+        "rate":0.0945
       },
       {
         "bracket":2,
