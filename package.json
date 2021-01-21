@@ -25,8 +25,8 @@
   },
   "homepage": "https://github.com/stevermeister/dutch-tax-income-calculator-npm#readme",
   "devDependencies": {
-    "csv-parser": "^2.3.2",
-    "jest": "^25.1.0"
+    "csv-parser": "^2.3.5",
+    "jest": "^25.5.4"
   },
   "jest": {
     "coveragePathIgnorePatterns": [
