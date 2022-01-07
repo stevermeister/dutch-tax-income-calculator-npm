@@ -8,8 +8,6 @@ const checkCalculation = async (year, callback) => {
 
   for (let i = 0; i < csv.length; i += ROW_INTERVAL) {
     const data = csv[i];
-    //SUPER UGLY HOTFIX till we find what wrong with parser which returns data["'income'"] insread of data["income"]
-    data.income = data.income || data[Object.keys(data)[0]]
     // Before retirement age
     const paycheckYounger = new SalaryPaycheck({
       income: data.income,
