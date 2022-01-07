@@ -8,6 +8,8 @@ const checkCalculation = async (year, callback) => {
 
   for (let i = 0; i < csv.length; i += ROW_INTERVAL) {
     const data = csv[i];
+    //SUPER UGLY HOTFIX till we find what wrong with parser which returns data["'income'"] insread of data["income"]
+    data.income = data.income || data[Object.keys(data)[0]]
     // Before retirement age
     const paycheckYounger = new SalaryPaycheck({
       income: data.income,
@@ -30,9 +32,10 @@ const checkCalculation = async (year, callback) => {
       expect(Math.abs(paycheckYounger.incomeTaxMonth)).toBeAround(data.youngerWithPayrollTaxCredit, MAXIMUM_DISCREPANCY);
       expect(paycheckYounger.netMonth).toBeAround(data.netMonth, MAXIMUM_DISCREPANCY);
     } catch (err) {
-      console.debug({ year, row: data, paycheck: paycheckYounger });
+      //console.debug({ year, row: data, paycheck: paycheckYounger });
       throw err;
     }
+
     // After retirement age
     const paycheckOlder = new SalaryPaycheck({
       income: data.income,
@@ -55,7 +58,7 @@ const checkCalculation = async (year, callback) => {
       expect(Math.abs(paycheckOlder.incomeTaxMonth)).toBeAround(data.olderWithPayrollTaxCredit, MAXIMUM_DISCREPANCY);
       expect(paycheckOlder.netMonth).toBeAround(data.netMonth, MAXIMUM_DISCREPANCY);
     } catch (err) {
-      console.debug({ year, row: data, paycheck: paycheckOlder });
+      //console.debug({ year, row: data, paycheck: paycheckOlder });
       throw err;
     }
   }
