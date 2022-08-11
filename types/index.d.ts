@@ -117,4 +117,7 @@ export class SalaryPaycheck {
     netDay: number;
     netHour: number;
 }
+
+
+declare var constants: any;
 export { constants };
