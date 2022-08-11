@@ -28,6 +28,7 @@
     "csv-parser": "^2.3.5",
     "jest": "^25.5.4"
   },
+  "types": "types/index.d.ts",
   "jest": {
     "coveragePathIgnorePatterns": [
       "/node_modules/",
