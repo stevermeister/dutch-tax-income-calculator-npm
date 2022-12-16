@@ -1,5 +1,5 @@
 {
-  "currentYear":2022,
+  "currentYear":2023,
   "years":[
     2015,
     2016,
@@ -56,8 +56,8 @@
       "research":0
     },
     "2023":{
-      "normal":39467,
-      "young":30001, 
+      "normal":41953,
+      "young":31891, 
       "research":0
     }
   },
