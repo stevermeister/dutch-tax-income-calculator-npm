@@ -13,13 +13,10 @@ class SalaryPaycheck {
    */
   constructor(salaryInput, startFrom, year, ruling) {
     const { income, allowance, socialSecurity, older, hours } = salaryInput;
-    this.grossYear = this.grossMonth = this.grossWeek = this.grossDay = this.grossHour = 0;
-    this['gross' + startFrom] = income;
-    let grossYear = this.grossYear + this.grossMonth * 12 + this.grossWeek * constants.workingWeeks;
-    grossYear += this.grossDay * constants.workingDays + this.grossHour * constants.workingWeeks * hours;
-    if (!grossYear || grossYear < 0) {
-      grossYear = 0;
-    }
+    this.initializeGrossValues();
+    this.setGrossValue(startFrom, income);
+    let grossYear = this.calculateGrossYear(hours);
+    grossYear = this.validateGrossYear(grossYear);
 
     this.grossAllowance = (allowance) ? SalaryPaycheck.getHolidayAllowance(grossYear) : 0;
     this.grossYear = roundNumber(grossYear, 2);
