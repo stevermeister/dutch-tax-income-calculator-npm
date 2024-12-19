@@ -35,4 +35,11 @@ https://www.belastingdienst.nl/wps/wcm/connect/nl/personeel-en-loon/content/hulp
 - Set the period to "Month".
 - Select the "Excel" format.
 
-Download the file and adjust it to the CSV format, using `__test__/test-tax-20xx.csv` as a reference/example. Ensure that the test data aligns with the most recent changes in the tax system.
+Take a look at the files in the `__tests__` folder for reference. To create such file from the Excel you will need to:
+
+- Open the downloaded Excel
+- Remove the columns labeled "met loonheffingskorting incl. alleenstaande-ouderenkorting" (7th column, "G") and "met loonheffingskorting incl. alleenstaande-ouderenkorting" (11th column, "K"). Ensure that the test data aligns with the most recent changes in the tax system. 
+- Depending on your locale, ensure correct number formatting (no thousand seperator, dot decimal seperator)
+- Remove remarks from the bottom rows
+- Remove unneeded header row and copy/paste the header row from a previous year
+- Save as `test-taxs-YYYY.csv`
