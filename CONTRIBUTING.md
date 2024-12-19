@@ -29,9 +29,10 @@ https://www.belastingdienst.nl/wps/wcm/connect/nl/personeel-en-loon/content/hulp
 
 - Choose the relevant year.
 - Select the country as the Netherlands.
-- Opt for the "Standard situation."
+- Choose "Time period table".
+- Opt for the "Standard situation".
 - Choose the "White" chart.
-- Set the period to "Month."
+- Set the period to "Month".
 - Select the "Excel" format.
 
 Download the file and adjust it to the CSV format, using `__test__/test-tax-20xx.csv` as a reference/example. Ensure that the test data aligns with the most recent changes in the tax system.
