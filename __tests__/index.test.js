@@ -30,7 +30,7 @@ const checkCalculation = async (year, callback) => {
       expect(Math.abs(paycheckYounger.incomeTaxMonth)).toBeAround(data.youngerWithPayrollTaxCredit, MAXIMUM_DISCREPANCY);
       expect(paycheckYounger.netMonth).toBeAround(data.netMonth, MAXIMUM_DISCREPANCY);
     } catch (err) {
-      //console.debug({ year, row: data, paycheck: paycheckYounger });
+       console.debug({ year, row: data, paycheck: paycheckYounger });
       throw err;
     }
 
@@ -56,7 +56,7 @@ const checkCalculation = async (year, callback) => {
       expect(Math.abs(paycheckOlder.incomeTaxMonth)).toBeAround(data.olderWithPayrollTaxCredit, MAXIMUM_DISCREPANCY);
       expect(paycheckOlder.netMonth).toBeAround(data.netMonth, MAXIMUM_DISCREPANCY);
     } catch (err) {
-      //console.debug({ year, row: data, paycheck: paycheckOlder });
+      console.debug({ year, row: data, paycheck: paycheckOlder });
       throw err;
     }
   }
