@@ -25,13 +25,13 @@ jobs:
         id: testing
         run: |
           npm run test:ci
-      - name: Add Coverage Report
+      - name: Coverage Report
         id: coverage-report
-        uses: 5monkeys/cobertura-action@v1
+        uses: romeovs/lcov-reporter-action@v0.3.1
         with:
-          path: coverage/cobertura-coverage.xml
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          minimum_coverage: 80
+          lcov-file: ./coverage/lcov.info
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          delete-old-comments: true
       - name: Upload Artifacts
         id: upload-artifacts
         uses: actions/upload-artifact@v1
