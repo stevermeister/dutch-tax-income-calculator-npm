@@ -74,6 +74,7 @@
     }
 
   },
+  "rulingMaxSalary": 246000,
   "payrollTax":{
     "2015":[
       {

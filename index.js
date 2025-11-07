@@ -33,10 +33,12 @@ class SalaryPaycheck {
 
     if (ruling.checked) {
       let rulingIncome = SalaryPaycheck.getRulingIncome(year, ruling.choice);
-      // the 30% of taxableYear is untaxed
-      // UNLESS this brings taxableYear under the rulingIncome
-      // in which case cap the effectiveSalary to rulingIncome
-      let effectiveSalary = this.taxableYear * 0.7;
+      let rulingMaxSalary = constants.rulingMaxSalary;
+      // 30% ruling only up to the salary cap
+      let salaryEligibleForRuling = Math.min(this.taxableYear, rulingMaxSalary);
+      let salaryAboveCap = Math.max(0, this.taxableYear - rulingMaxSalary);
+      // Calculate the 30% on eligible salary only
+      let effectiveSalary = salaryEligibleForRuling * 0.7 + salaryAboveCap;
       effectiveSalary = Math.max(effectiveSalary, rulingIncome);
       let reimbursement = this.taxableYear - effectiveSalary;
       if (reimbursement > 0) {

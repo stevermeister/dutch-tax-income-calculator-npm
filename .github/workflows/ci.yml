@@ -34,7 +34,7 @@ jobs:
           delete-old-comments: true
       - name: Upload Artifacts
         id: upload-artifacts
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: artifacts
           path: coverage
