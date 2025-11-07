@@ -5,8 +5,20 @@
   "main": "index.js",
   "scripts": {
     "test": "npx jest",
-    "test:ci": "npx jest --ci --collect-coverage"
+    "test:ci": "npx jest --ci --collect-coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "index.js",
+    "types/",
+    "constants/"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/stevermeister/dutch-tax-income-calculator-npm.git"
@@ -25,8 +37,13 @@
   },
   "homepage": "https://github.com/stevermeister/dutch-tax-income-calculator-npm#readme",
   "devDependencies": {
-    "csv-parser": "^2.3.5",
-    "jest": "^29.3.1"
+    "@eslint/js": "^9.39.1",
+    "csv-parser": "^3.2.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "jest": "^29.7.0",
+    "prettier": "^3.6.2"
   },
   "types": "types/index.d.ts",
   "jest": {
