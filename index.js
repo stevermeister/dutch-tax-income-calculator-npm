@@ -1,4 +1,4 @@
-const constants = require('./data.json');
+import constants from './data.json' with { type: 'json' };
 
 class SalaryPaycheck {
   /**
@@ -308,7 +308,4 @@ const roundNumber = (value, places = 2) => {
   return Number(value.toFixed(places));
 };
 
-module.exports = {
-  SalaryPaycheck,
-  constants,
-};
+export { SalaryPaycheck, constants };

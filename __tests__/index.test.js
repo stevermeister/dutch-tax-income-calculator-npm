@@ -1,5 +1,5 @@
-const { parseCsv } = require('./helper');
-const { constants, SalaryPaycheck } = require('../index');
+import { parseCsv } from './helper.js';
+import { constants, SalaryPaycheck } from '../index.js';
 
 const checkCalculation = async (year, callback) => {
   const csv = await parseCsv(`__tests__/test-tax-${year}.csv`);

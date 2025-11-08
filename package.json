@@ -2,10 +2,18 @@
   "name": "dutch-tax-income-calculator",
   "version": "25.2.1",
   "description": "NPM package with functionality to calculate Dutch Tax Income",
+  "type": "module",
   "main": "index.js",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./types/index.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
   "scripts": {
-    "test": "npx jest",
-    "test:ci": "npx jest --ci --collect-coverage",
+    "test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
+    "test:ci": "NODE_OPTIONS=--experimental-vm-modules npx jest --ci --collect-coverage",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -47,6 +55,8 @@
   },
   "types": "types/index.d.ts",
   "jest": {
+    "transform": {},
+    "testEnvironment": "node",
     "coveragePathIgnorePatterns": [
       "/node_modules/",
       "/__tests__/"

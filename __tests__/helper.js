@@ -1,10 +1,6 @@
-const csv = require('csv-parser');
-const fs = require('fs');
-const {
-  EXPECTED_COLOR,
-  RECEIVED_COLOR,
-  stringify,
-} = require('jest-matcher-utils');
+import csv from 'csv-parser';
+import fs from 'fs';
+import { EXPECTED_COLOR, RECEIVED_COLOR, stringify } from 'jest-matcher-utils';
 
 expect.extend({
   toBeAround(actual, expected, difference = 0.1) {
@@ -45,6 +41,4 @@ const parseCsv = (filePath) => {
   });
 };
 
-module.exports = {
-  parseCsv,
-};
+export { parseCsv };

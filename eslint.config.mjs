@@ -7,7 +7,7 @@ export default [
   prettierConfig,
   {
     languageOptions: {
-      ecmaVersion: 2021,
+      ecmaVersion: 'latest',
       sourceType: 'module',
       globals: {
         console: 'readonly',
