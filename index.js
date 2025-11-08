@@ -4,7 +4,7 @@ class SalaryPaycheck {
   /**
    * For calculation instructions:
    * https://www.belastingdienst.nl/wps/wcm/connect/nl/zoeken/zoeken?q=Rekenvoorschriften+voor+de+geautomatiseerde+loonadministratie
-   * 
+   *
    * @param {object} salaryInput Salary input information
    * @param {'Year'|'Month'|'Week'|'Day'|'Hour'} startFrom Salary input information
    * @param {number} year Year to perform calculation
@@ -13,15 +13,27 @@ class SalaryPaycheck {
    */
   constructor(salaryInput, startFrom, year, ruling) {
     const { income, allowance, socialSecurity, older, hours } = salaryInput;
-    this.grossYear = this.grossMonth = this.grossWeek = this.grossDay = this.grossHour = 0;
+    this.grossYear =
+      this.grossMonth =
+      this.grossWeek =
+      this.grossDay =
+      this.grossHour =
+        0;
     this['gross' + startFrom] = income;
-    let grossYear = this.grossYear + this.grossMonth * 12 + this.grossWeek * constants.workingWeeks;
-    grossYear += this.grossDay * constants.workingDays + this.grossHour * constants.workingWeeks * hours;
+    let grossYear =
+      this.grossYear +
+      this.grossMonth * 12 +
+      this.grossWeek * constants.workingWeeks;
+    grossYear +=
+      this.grossDay * constants.workingDays +
+      this.grossHour * constants.workingWeeks * hours;
     if (!grossYear || grossYear < 0) {
       grossYear = 0;
     }
 
-    this.grossAllowance = (allowance) ? SalaryPaycheck.getHolidayAllowance(grossYear) : 0;
+    this.grossAllowance = allowance
+      ? SalaryPaycheck.getHolidayAllowance(grossYear)
+      : 0;
     this.grossYear = roundNumber(grossYear, 2);
     this.grossMonth = SalaryPaycheck.getAmountMonth(grossYear);
     this.grossWeek = SalaryPaycheck.getAmountWeek(grossYear);
@@ -52,16 +64,36 @@ class SalaryPaycheck {
     this.taxableYear = roundNumber(this.taxableYear, 2);
     this.payrollTax = -1 * SalaryPaycheck.getPayrollTax(year, this.taxableYear);
     this.payrollTaxMonth = SalaryPaycheck.getAmountMonth(this.payrollTax);
-    this.socialTax = (socialSecurity) ? -1 * SalaryPaycheck.getSocialTax(year, this.taxableYear, older) : 0;
+    this.socialTax = socialSecurity
+      ? -1 * SalaryPaycheck.getSocialTax(year, this.taxableYear, older)
+      : 0;
     this.socialTaxMonth = SalaryPaycheck.getAmountMonth(this.socialTax);
     this.taxWithoutCredit = roundNumber(this.payrollTax + this.socialTax, 2);
-    this.taxWithoutCreditMonth = SalaryPaycheck.getAmountMonth(this.taxWithoutCredit);
-    let socialCredit = SalaryPaycheck.getSocialCredit(year, older, socialSecurity);
-    this.labourCredit = SalaryPaycheck.getLabourCredit(year, this.taxableYear, socialCredit);
+    this.taxWithoutCreditMonth = SalaryPaycheck.getAmountMonth(
+      this.taxWithoutCredit
+    );
+    let socialCredit = SalaryPaycheck.getSocialCredit(
+      year,
+      older,
+      socialSecurity
+    );
+    this.labourCredit = SalaryPaycheck.getLabourCredit(
+      year,
+      this.taxableYear,
+      socialCredit
+    );
     this.labourCreditMonth = SalaryPaycheck.getAmountMonth(this.labourCredit);
-    this.generalCredit = SalaryPaycheck.getGeneralCredit(year, this.taxableYear, older, socialCredit);
-    if (this.taxWithoutCredit + this.labourCredit + this.generalCredit > 0
-        || (older && this.taxableYear < constants.lowWageThreshold[year] / socialCredit)) {
+    this.generalCredit = SalaryPaycheck.getGeneralCredit(
+      year,
+      this.taxableYear,
+      older,
+      socialCredit
+    );
+    if (
+      this.taxWithoutCredit + this.labourCredit + this.generalCredit > 0 ||
+      (older &&
+        this.taxableYear < constants.lowWageThreshold[year] / socialCredit)
+    ) {
       this.generalCredit = -1 * (this.taxWithoutCredit + this.labourCredit);
     }
     this.generalCreditMonth = SalaryPaycheck.getAmountMonth(this.generalCredit);
@@ -70,8 +102,9 @@ class SalaryPaycheck {
     this.incomeTax = roundNumber(this.taxWithoutCredit + this.taxCredit, 2);
     this.incomeTaxMonth = SalaryPaycheck.getAmountMonth(this.incomeTax);
     this.netYear = this.taxableYear + this.incomeTax + this.taxFreeYear;
-    this.netAllowance = (allowance) ? SalaryPaycheck.getHolidayAllowance(this.netYear) : 0;
-    //this.netYear -= this.netAllowance; // Remove holiday allowance from annual net amount
+    this.netAllowance = allowance
+      ? SalaryPaycheck.getHolidayAllowance(this.netYear)
+      : 0;
     this.netMonth = SalaryPaycheck.getAmountMonth(this.netYear);
     this.netWeek = SalaryPaycheck.getAmountWeek(this.netYear);
     this.netDay = SalaryPaycheck.getAmountDay(this.netYear);
@@ -83,11 +116,7 @@ class SalaryPaycheck {
   }
 
   static getTaxFree(taxFreeYear, grossYear) {
-    return roundNumber(taxFreeYear / grossYear * 100, 2);
-  }
-
-  static getNetYear(taxableYear, incomeTax, taxFreeYear) {
-    return roundNumber(taxableYear + incomeTax + taxFreeYear, 2);
+    return roundNumber((taxFreeYear / grossYear) * 100, 2);
   }
 
   static getAmountMonth(amountYear) {
@@ -109,7 +138,7 @@ class SalaryPaycheck {
   /**
    * 30% Ruling (30%-regeling)
    * https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/belastingdienst/prive/internationaal/werken_wonen/tijdelijk_in_een_ander_land_werken/u_komt_in_nederland_werken/30_procent_regeling/voorwaarden_30_procent_regeling/u-hebt-een-specifieke-deskundigheid
-   * 
+   *
    * @param {string} year Year to retrieve information from
    * @param {string} ruling Choice between scientific research workers, young professionals with Master's degree or others cases
    * @returns {number} The 30% Ruling minimum income
@@ -121,19 +150,19 @@ class SalaryPaycheck {
   /**
    * Payroll Tax Rates (Loonbelasting)
    * https://www.belastingdienst.nl/bibliotheek/handboeken/html/boeken/HL/stappenplan-stap_7_loonbelasting_premie_volksverzekeringen.html
-   * 
+   *
    * @param {string} year Year to retrieve information from
    * @param {number} salary Taxable wage that will be used for calculation
    * @returns {number} The Payroll Tax Rates after calculating proper bracket amount
    */
   static getPayrollTax(year, salary) {
-    return SalaryPaycheck.getRates(constants.payrollTax[year], salary, "rate");
+    return SalaryPaycheck.getRates(constants.payrollTax[year], salary, 'rate');
   }
 
   /**
    * Social Security Contribution (Volksverzekeringen - AOW, Anw, Wlz)
    * https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/belastingdienst/prive/werk_en_inkomen/sociale_verzekeringen/premies_volks_en_werknemersverzekeringen/volksverzekeringen/volksverzekeringen
-   * 
+   *
    * @param {string} year Year to retrieve information from
    * @param {number} salary Taxable wage that will be used for calculation
    * @param {string} [older] Whether is after retirement age or not
@@ -143,14 +172,14 @@ class SalaryPaycheck {
     return SalaryPaycheck.getRates(
       constants.socialPercent[year],
       salary,
-      older ? "older" : "social"
+      older ? 'older' : 'social'
     );
   }
 
   /**
    * General Tax Credit (Algemene Heffingskorting)
    * https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/belastingdienst/prive/inkomstenbelasting/heffingskortingen_boxen_tarieven/heffingskortingen/algemene_heffingskorting/
-   * 
+   *
    * @param {string} year Year to retrieve information from
    * @param {number} salary Taxable wage that will be used for calculation
    * @param {boolean} older Whether is after retirement age or not
@@ -158,10 +187,19 @@ class SalaryPaycheck {
    * @returns {number} The General Tax Credit after calculating proper bracket amount
    */
   static getGeneralCredit(year, salary, older, multiplier = 1) {
-    let generalCredit = SalaryPaycheck.getRates(constants.generalCredit[year], salary, "rate", multiplier);
+    let generalCredit = SalaryPaycheck.getRates(
+      constants.generalCredit[year],
+      salary,
+      'rate',
+      multiplier
+    );
     // Additional credit for worker that reached retirement age
     if (older) {
-      generalCredit += SalaryPaycheck.getRates(constants.elderCredit[year], salary, "rate");
+      generalCredit += SalaryPaycheck.getRates(
+        constants.elderCredit[year],
+        salary,
+        'rate'
+      );
     }
     return generalCredit;
   }
@@ -169,24 +207,28 @@ class SalaryPaycheck {
   /**
    * Labour Tax Credit (Arbeidskorting)
    * https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/belastingdienst/prive/inkomstenbelasting/heffingskortingen_boxen_tarieven/heffingskortingen/arbeidskorting/
-   * 
+   *
    * @param {string} year Year to retrieve information from
    * @param {number} salary Taxable wage that will be used for calculation
    * @param {number} [multiplier] Scalar value to multiple against final result
    * @returns {number} The Labour Tax Credit after calculating proper bracket amount
    */
   static getLabourCredit(year, salary, multiplier = 1) {
-    // TODO: this low wage threshold should be confirmed
     if (salary < constants.lowWageThreshold[year] / multiplier) {
       return 0;
     }
-    return SalaryPaycheck.getRates(constants.labourCredit[year], salary, "rate", multiplier);
+    return SalaryPaycheck.getRates(
+      constants.labourCredit[year],
+      salary,
+      'rate',
+      multiplier
+    );
   }
 
   /**
    * Social Security Contribution (Volksverzekeringen) Component of Tax Credit
    * https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/belastingdienst/prive/werk_en_inkomen/sociale_verzekeringen/premies_volks_en_werknemersverzekeringen/volksverzekeringen/hoeveel_moet_u_betalen
-   * 
+   *
    * @param {string} year Year to retrieve information from
    * @param {boolean} older Whether is after retirement age or not
    * @param {boolean} socialSecurity Whether social security will be considered or not
@@ -194,17 +236,18 @@ class SalaryPaycheck {
    */
   static getSocialCredit(year, older, socialSecurity) {
     /*
-    * JSON properties for socialPercent object
-    * rate: Higher full rate including social contributions to be used to get proportion
-    * social: Percentage of social contributions (AOW + Anw + Wlz)
-    * older: Percentage for retirement age (Anw + Wlz, no contribution to AOW)
-    */
+     * JSON properties for socialPercent object
+     * rate: Higher full rate including social contributions to be used to get proportion
+     * social: Percentage of social contributions (AOW + Anw + Wlz)
+     * older: Percentage for retirement age (Anw + Wlz, no contribution to AOW)
+     */
     let bracket = constants.socialPercent[year][0],
       percentage = 1;
     if (!socialSecurity) {
       percentage = (bracket.rate - bracket.social) / bracket.rate; // Removing AOW + Anw + Wlz from total
     } else if (older) {
-      percentage = (bracket.rate + bracket.older - bracket.social) / bracket.rate; // Removing only AOW from total
+      percentage =
+        (bracket.rate + bracket.older - bracket.social) / bracket.rate; // Removing only AOW from total
     }
     return percentage;
   }
@@ -225,12 +268,12 @@ class SalaryPaycheck {
       delta,
       isPercent;
 
-    brackets.some((bracket, index) => {
+    brackets.some((bracket, _index) => {
       delta = bracket.max ? bracket.max - bracket.min : Infinity; // Consider infinity when no upper bound
       tax =
         Math.round(
           multiplier *
-            (kind && bracket[kind] ? bracket[kind] : bracket["rate"]) *
+            (kind && bracket[kind] ? bracket[kind] : bracket['rate']) *
             100000
         ) / 100000;
       isPercent = tax != 0 && tax > -1 && tax < 1; // Check if rate is percentage or fixed
@@ -263,9 +306,9 @@ class SalaryPaycheck {
  */
 const roundNumber = (value, places = 2) => {
   return Number(value.toFixed(places));
-}
+};
 
 module.exports = {
   SalaryPaycheck,
   constants,
-}
+};
