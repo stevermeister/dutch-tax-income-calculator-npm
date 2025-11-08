@@ -16,8 +16,8 @@
   },
   "files": [
     "index.js",
-    "types/",
-    "constants/"
+    "data.json",
+    "types/"
   ],
   "repository": {
     "type": "git",
