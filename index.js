@@ -45,7 +45,7 @@ class SalaryPaycheck {
 
     if (ruling.checked) {
       let rulingIncome = SalaryPaycheck.getRulingIncome(year, ruling.choice);
-      let rulingMaxSalary = constants.rulingMaxSalary;
+      let rulingMaxSalary = constants.rulingMaxSalary[year];
       // 30% ruling only up to the salary cap
       let salaryEligibleForRuling = Math.min(this.taxableYear, rulingMaxSalary);
       let salaryAboveCap = Math.max(0, this.taxableYear - rulingMaxSalary);
