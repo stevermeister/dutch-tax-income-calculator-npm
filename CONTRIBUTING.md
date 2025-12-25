@@ -42,4 +42,4 @@ Take a look at the files in the `__tests__` folder for reference. To create such
 - Depending on your locale, ensure correct number formatting (no thousand seperator, dot decimal seperator)
 - Remove remarks from the bottom rows
 - Remove unneeded header row and copy/paste the header row from a previous year
-- Save as `test-taxs-YYYY.csv`
+- Save as `test-tax-YYYY.csv`

@@ -166,6 +166,7 @@ export interface Constants {
   workingWeeks: number;
   workingDays: number;
   rulingThreshold: Record<string, RulingThreshold>;
+  rulingMaxSalary: Record<string, number>;
   lowWageThreshold: Record<string, number>;
   payrollTax: Record<string, Array<Record<string, number>>>;
   socialPercent: Record<string, Array<Record<string, number>>>;
