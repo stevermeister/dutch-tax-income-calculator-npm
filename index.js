@@ -46,11 +46,14 @@ class SalaryPaycheck {
     if (ruling.checked) {
       let rulingIncome = SalaryPaycheck.getRulingIncome(year, ruling.choice);
       let rulingMaxSalary = constants.rulingMaxSalary[year];
-      // 30% ruling only up to the salary cap
+      // Ruling percentage (default 30% for backwards compatibility)
+      let rulingPercentage = ruling.percentage || 30;
+      let taxableMultiplier = 1 - rulingPercentage / 100;
+      // Ruling only up to the salary cap
       let salaryEligibleForRuling = Math.min(this.taxableYear, rulingMaxSalary);
       let salaryAboveCap = Math.max(0, this.taxableYear - rulingMaxSalary);
-      // Calculate the 30% on eligible salary only
-      let effectiveSalary = salaryEligibleForRuling * 0.7 + salaryAboveCap;
+      // Calculate the ruling on eligible salary only
+      let effectiveSalary = salaryEligibleForRuling * taxableMultiplier + salaryAboveCap;
       effectiveSalary = Math.max(effectiveSalary, rulingIncome);
       let reimbursement = this.taxableYear - effectiveSalary;
       if (reimbursement > 0) {
