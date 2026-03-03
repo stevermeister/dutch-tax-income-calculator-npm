@@ -9,6 +9,7 @@ export interface SalaryInput {
 export interface RulingInput {
   checked: boolean;
   type?: 'researchWorker' | 'youngProfessional' | 'other';
+  percentage?: number;
 }
 
 export class SalaryPaycheck {
