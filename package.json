@@ -1,6 +1,6 @@
 {
   "name": "dutch-tax-income-calculator",
-  "version": "26.1.1",
+  "version": "26.1.2",
   "description": "NPM package with functionality to calculate Dutch Tax Income",
   "type": "module",
   "main": "index.js",
