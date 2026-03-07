@@ -12,7 +12,7 @@ class SalaryPaycheck {
    * @returns {object} Object with all calculated fields for the salary paycheck
    */
   constructor(salaryInput, startFrom, year, ruling) {
-    const { income, allowance, socialSecurity, older, hours } = salaryInput;
+    let { income, allowance, socialSecurity, older, hours } = salaryInput;
     this.grossYear =
       this.grossMonth =
       this.grossWeek =
@@ -29,6 +29,13 @@ class SalaryPaycheck {
       this.grossHour * constants.workingWeeks * hours;
     if (!grossYear || grossYear < 0) {
       grossYear = 0;
+    }
+
+    // When salary doesn't include holiday allowance but 30% ruling is applied,
+    // add 8% to get total employment income (ruling applies to total comp)
+    if (!allowance && ruling.checked) {
+      grossYear = roundNumber(grossYear * 1.08, 2);
+      allowance = true;
     }
 
     this.grossAllowance = allowance

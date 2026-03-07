@@ -161,3 +161,72 @@ describe('30% ruling with holiday allowance included', () => {
     expect(result.taxableYear).toBe(100000);
   });
 });
+
+describe('30% ruling without holiday allowance (allowance=false)', () => {
+  test('should add 8% holiday allowance to gross when ruling is applied', () => {
+    const result = new SalaryPaycheck(
+      { income: 100000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      'Year',
+      2026,
+      { checked: true, choice: 'normal' }
+    );
+
+    // Gross should be inflated by 8% to reflect total employment income
+    expect(result.grossYear).toBe(108000);
+    expect(result.grossAllowance).toBeCloseTo(8000, 0);
+  });
+
+  test('should produce identical results for equivalent salaries with and without allowance', () => {
+    const withAllowance = new SalaryPaycheck(
+      { income: 108000, allowance: true, socialSecurity: true, older: false, hours: 40 },
+      'Year',
+      2026,
+      { checked: true, choice: 'normal' }
+    );
+
+    const withoutAllowance = new SalaryPaycheck(
+      { income: 100000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      'Year',
+      2026,
+      { checked: true, choice: 'normal' }
+    );
+
+    expect(withoutAllowance.grossYear).toBe(withAllowance.grossYear);
+    expect(withoutAllowance.taxFreeYear).toBe(withAllowance.taxFreeYear);
+    expect(withoutAllowance.taxableYear).toBe(withAllowance.taxableYear);
+    expect(withoutAllowance.incomeTax).toBe(withAllowance.incomeTax);
+    expect(withoutAllowance.netYear).toBe(withAllowance.netYear);
+    expect(withoutAllowance.netMonth).toBe(withAllowance.netMonth);
+  });
+
+  test('should not inflate gross when ruling is unchecked', () => {
+    const result = new SalaryPaycheck(
+      { income: 100000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      'Year',
+      2026,
+      { checked: false }
+    );
+
+    expect(result.grossYear).toBe(100000);
+    expect(result.grossAllowance).toBe(0);
+  });
+
+  test('should work correctly with monthly input', () => {
+    const monthly = new SalaryPaycheck(
+      { income: 5000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      'Month',
+      2026,
+      { checked: true, choice: 'normal' }
+    );
+
+    const yearlyEquivalent = new SalaryPaycheck(
+      { income: 5000 * 12 * 1.08, allowance: true, socialSecurity: true, older: false, hours: 40 },
+      'Year',
+      2026,
+      { checked: true, choice: 'normal' }
+    );
+
+    expect(monthly.grossYear).toBeCloseTo(yearlyEquivalent.grossYear, 0);
+    expect(monthly.netYear).toBeCloseTo(yearlyEquivalent.netYear, 0);
+  });
+});
