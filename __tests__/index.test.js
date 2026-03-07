@@ -113,3 +113,51 @@ describe('Tax calculation section', () => {
     });
   });
 });
+
+describe('30% ruling with holiday allowance included', () => {
+  test('should apply 30% ruling on full gross including holiday allowance', () => {
+    const result = new SalaryPaycheck(
+      { income: 100000, allowance: true, socialSecurity: true, older: false, hours: 40 },
+      'Year',
+      2026,
+      { checked: true, choice: 'normal' }
+    );
+
+    expect(result.taxableYear).toBeCloseTo(70000, 0);
+    expect(result.taxFreeYear).toBeCloseTo(30000, 0);
+    expect(result.taxFree).toBeCloseTo(30, 0);
+  });
+
+  test('should produce consistent results with and without allowance flag', () => {
+    const withAllowance = new SalaryPaycheck(
+      { income: 108000, allowance: true, socialSecurity: true, older: false, hours: 40 },
+      'Year',
+      2026,
+      { checked: true, choice: 'normal' }
+    );
+
+    const withoutAllowance = new SalaryPaycheck(
+      { income: 100000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      'Year',
+      2026,
+      { checked: true, choice: 'normal' }
+    );
+
+    // 108000 with allowance has same base salary (100000) as 100000 without allowance
+    // Both should show 30% tax-free
+    expect(withAllowance.taxFree).toBeCloseTo(30, 0);
+    expect(withoutAllowance.taxFree).toBeCloseTo(30, 0);
+  });
+
+  test('should not apply ruling when allowance=false and ruling unchecked', () => {
+    const result = new SalaryPaycheck(
+      { income: 100000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      'Year',
+      2026,
+      { checked: false }
+    );
+
+    expect(result.taxFreeYear).toBe(0);
+    expect(result.taxableYear).toBe(100000);
+  });
+});
