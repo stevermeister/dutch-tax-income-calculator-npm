@@ -31,6 +31,9 @@ class SalaryPaycheck {
       grossYear = 0;
     }
 
+    // Store the original input before any adjustments
+    this.inputGrossYear = roundNumber(grossYear, 2);
+
     // When salary doesn't include holiday allowance but 30% ruling is applied,
     // add 8% to get total employment income (ruling applies to total comp)
     if (!allowance && ruling.checked) {

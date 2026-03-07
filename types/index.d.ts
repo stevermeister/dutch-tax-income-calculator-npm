@@ -122,6 +122,7 @@ export class SalaryPaycheck {
     year: number,
     ruling: RulingInput
   );
+  inputGrossYear: number;
   grossYear: number;
   grossMonth: number;
   grossWeek: number;

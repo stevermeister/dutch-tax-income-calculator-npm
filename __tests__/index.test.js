@@ -174,6 +174,8 @@ describe('30% ruling without holiday allowance (allowance=false)', () => {
     // Gross should be inflated by 8% to reflect total employment income
     expect(result.grossYear).toBe(108000);
     expect(result.grossAllowance).toBeCloseTo(8000, 0);
+    // Original input preserved
+    expect(result.inputGrossYear).toBe(100000);
   });
 
   test('should produce identical results for equivalent salaries with and without allowance', () => {
@@ -208,6 +210,7 @@ describe('30% ruling without holiday allowance (allowance=false)', () => {
     );
 
     expect(result.grossYear).toBe(100000);
+    expect(result.inputGrossYear).toBe(100000);
     expect(result.grossAllowance).toBe(0);
   });
 
