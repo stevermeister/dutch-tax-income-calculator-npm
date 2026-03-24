@@ -214,6 +214,20 @@ describe('30% ruling without holiday allowance (allowance=false)', () => {
     expect(result.grossAllowance).toBe(0);
   });
 
+  test('should not inflate gross when income is below ruling threshold', () => {
+    const result = new SalaryPaycheck(
+      { income: 30000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      'Year',
+      2026,
+      { checked: true, choice: 'normal' }
+    );
+
+    // Below threshold — ruling doesn't apply, gross should NOT be inflated
+    expect(result.grossYear).toBe(30000);
+    expect(result.taxFreeYear).toBe(0);
+    expect(result.grossAllowance).toBe(0);
+  });
+
   test('should work correctly with monthly input', () => {
     const monthly = new SalaryPaycheck(
       { income: 5000, allowance: false, socialSecurity: true, older: false, hours: 40 },

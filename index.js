@@ -36,22 +36,14 @@ class SalaryPaycheck {
 
     // When salary doesn't include holiday allowance but 30% ruling is applied,
     // add 8% to get total employment income (ruling applies to total comp)
+    let grossInflated = false;
     if (!allowance && ruling.checked) {
       grossYear = roundNumber(grossYear * 1.08, 2);
       allowance = true;
+      grossInflated = true;
     }
 
-    this.grossAllowance = allowance
-      ? SalaryPaycheck.getHolidayAllowance(grossYear)
-      : 0;
-    this.grossYear = roundNumber(grossYear, 2);
-    this.grossMonth = SalaryPaycheck.getAmountMonth(grossYear);
-    this.grossWeek = SalaryPaycheck.getAmountWeek(grossYear);
-    this.grossDay = SalaryPaycheck.getAmountDay(grossYear);
-    this.grossHour = SalaryPaycheck.getAmountHour(grossYear, hours);
-
     this.taxFreeYear = 0;
-    this.taxableYear = grossYear - this.grossAllowance;
 
     if (ruling.checked) {
       let rulingIncome = SalaryPaycheck.getRulingIncome(year, ruling.choice);
@@ -65,9 +57,26 @@ class SalaryPaycheck {
       let reimbursement = grossYear - effectiveSalary;
       if (reimbursement > 0) {
         this.taxFreeYear = reimbursement;
-        this.taxableYear = grossYear - reimbursement;
+      } else if (grossInflated) {
+        // Ruling doesn't apply — revert the 8% inflation
+        grossYear = this.inputGrossYear;
+        allowance = false;
+        grossInflated = false;
       }
     }
+
+    this.grossAllowance = allowance
+      ? SalaryPaycheck.getHolidayAllowance(grossYear)
+      : 0;
+    this.grossYear = roundNumber(grossYear, 2);
+    this.grossMonth = SalaryPaycheck.getAmountMonth(grossYear);
+    this.grossWeek = SalaryPaycheck.getAmountWeek(grossYear);
+    this.grossDay = SalaryPaycheck.getAmountDay(grossYear);
+    this.grossHour = SalaryPaycheck.getAmountHour(grossYear, hours);
+    this.taxableYear =
+      this.taxFreeYear > 0
+        ? grossYear - this.taxFreeYear
+        : grossYear - this.grossAllowance;
 
     this.taxFreeYear = roundNumber(this.taxFreeYear, 2);
     this.taxFree = SalaryPaycheck.getTaxFree(this.taxFreeYear, grossYear);
