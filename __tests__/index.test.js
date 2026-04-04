@@ -128,6 +128,22 @@ describe('30% ruling with holiday allowance included', () => {
     expect(result.taxFree).toBeCloseTo(30, 0);
   });
 
+  test('should exclude holiday from netMonth when allowance is true with ruling', () => {
+    const result = new SalaryPaycheck(
+      { income: 100000, allowance: true, socialSecurity: true, older: false, hours: 40 },
+      'Year',
+      2026,
+      { checked: true, choice: 'normal' }
+    );
+
+    // netMonth should be netYear minus holiday portion, divided by 12
+    expect(result.netMonth).toBeCloseTo(
+      (result.netYear - result.netAllowance) / 12, 2
+    );
+    // netMonth should be less than netYear/12 (holiday excluded)
+    expect(result.netMonth).toBeLessThan(result.netYear / 12);
+  });
+
   test('should produce consistent results with and without allowance flag', () => {
     const withAllowance = new SalaryPaycheck(
       { income: 108000, allowance: true, socialSecurity: true, older: false, hours: 40 },
@@ -178,7 +194,7 @@ describe('30% ruling without holiday allowance (allowance=false)', () => {
     expect(result.inputGrossYear).toBe(100000);
   });
 
-  test('should produce identical results for equivalent salaries with and without allowance', () => {
+  test('should produce identical financial results for equivalent salaries with and without allowance', () => {
     const withAllowance = new SalaryPaycheck(
       { income: 108000, allowance: true, socialSecurity: true, older: false, hours: 40 },
       'Year',
@@ -193,12 +209,22 @@ describe('30% ruling without holiday allowance (allowance=false)', () => {
       { checked: true, choice: 'normal' }
     );
 
+    // Financial results must match
     expect(withoutAllowance.grossYear).toBe(withAllowance.grossYear);
     expect(withoutAllowance.taxFreeYear).toBe(withAllowance.taxFreeYear);
     expect(withoutAllowance.taxableYear).toBe(withAllowance.taxableYear);
     expect(withoutAllowance.incomeTax).toBe(withAllowance.incomeTax);
     expect(withoutAllowance.netYear).toBe(withAllowance.netYear);
-    expect(withoutAllowance.netMonth).toBe(withAllowance.netMonth);
+
+    // netMonth intentionally differs: allowance=true excludes holiday
+    // from period amounts (holiday is paid separately in May),
+    // while allowance=false includes it (user entered base salary)
+    expect(withAllowance.netMonth).toBeCloseTo(
+      (withAllowance.netYear - withAllowance.netAllowance) / 12, 2
+    );
+    expect(withoutAllowance.netMonth).toBeCloseTo(
+      withoutAllowance.netYear / 12, 2
+    );
   });
 
   test('should not inflate gross when ruling is unchecked', () => {

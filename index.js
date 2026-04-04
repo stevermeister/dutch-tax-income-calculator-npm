@@ -13,6 +13,7 @@ class SalaryPaycheck {
    */
   constructor(salaryInput, startFrom, year, ruling) {
     let { income, allowance, socialSecurity, older, hours } = salaryInput;
+    const originalAllowance = allowance;
     this.grossYear =
       this.grossMonth =
       this.grossWeek =
@@ -124,10 +125,17 @@ class SalaryPaycheck {
     this.netAllowance = allowance
       ? SalaryPaycheck.getHolidayAllowance(this.netYear)
       : 0;
-    this.netMonth = SalaryPaycheck.getAmountMonth(this.netYear);
-    this.netWeek = SalaryPaycheck.getAmountWeek(this.netYear);
-    this.netDay = SalaryPaycheck.getAmountDay(this.netYear);
-    this.netHour = SalaryPaycheck.getAmountHour(this.netYear, hours);
+    // When the user indicated holiday is included (originalAllowance) and
+    // the ruling is active, netYear includes the holiday component.
+    // Exclude it from period amounts since holiday is paid separately.
+    let netYearForPeriods =
+      originalAllowance && this.taxFreeYear > 0
+        ? this.netYear - this.netAllowance
+        : this.netYear;
+    this.netMonth = SalaryPaycheck.getAmountMonth(netYearForPeriods);
+    this.netWeek = SalaryPaycheck.getAmountWeek(netYearForPeriods);
+    this.netDay = SalaryPaycheck.getAmountDay(netYearForPeriods);
+    this.netHour = SalaryPaycheck.getAmountHour(netYearForPeriods, hours);
   }
 
   static getHolidayAllowance(amountYear) {
