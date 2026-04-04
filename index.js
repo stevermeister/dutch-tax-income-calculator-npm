@@ -73,10 +73,7 @@ class SalaryPaycheck {
     this.grossWeek = SalaryPaycheck.getAmountWeek(grossYear);
     this.grossDay = SalaryPaycheck.getAmountDay(grossYear);
     this.grossHour = SalaryPaycheck.getAmountHour(grossYear, hours);
-    this.taxableYear =
-      this.taxFreeYear > 0
-        ? grossYear - this.taxFreeYear
-        : grossYear - this.grossAllowance;
+    this.taxableYear = grossYear - this.grossAllowance - this.taxFreeYear;
 
     this.taxFreeYear = roundNumber(this.taxFreeYear, 2);
     this.taxFree = SalaryPaycheck.getTaxFree(this.taxFreeYear, grossYear);

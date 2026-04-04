@@ -123,9 +123,12 @@ describe('30% ruling with holiday allowance included', () => {
       { checked: true, choice: 'normal' }
     );
 
-    expect(result.taxableYear).toBeCloseTo(70000, 0);
+    // taxFreeYear is 30% of full gross
     expect(result.taxFreeYear).toBeCloseTo(30000, 0);
     expect(result.taxFree).toBeCloseTo(30, 0);
+    // taxableYear deducts both holiday allowance and 30% ruling
+    const expectedHoliday = 100000 * (0.08 / 1.08);
+    expect(result.taxableYear).toBeCloseTo(100000 - 30000 - expectedHoliday, 0);
   });
 
   test('should produce consistent results with and without allowance flag', () => {
