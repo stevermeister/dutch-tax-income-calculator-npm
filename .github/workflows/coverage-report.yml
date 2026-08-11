@@ -2,7 +2,7 @@ name: Coverage Report
 
 on:
   workflow_run:
-    workflows: ["Continuous Integration"]
+    workflows: ['Continuous Integration']
     types:
       - completed
 
@@ -21,7 +21,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_ID: ${{ github.event.workflow_run.id }}
-        run: gh run download $RUN_ID -n artifacts -D coverage
+        run: gh run download $RUN_ID -n artifacts -D coverage --repo ${{ github.repository }}
 
       - name: Comment on PR
         uses: Nef10/lcov-reporter-action@v0.4.0
