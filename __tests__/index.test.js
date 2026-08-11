@@ -1,5 +1,69 @@
 import { parseCsv } from './helper.js';
-import { constants, SalaryPaycheck } from '../index.js';
+import { constants, SalaryPaycheck, netToGross } from '../index.js';
+
+// Asserts that feeding a forward result's net back into netToGross recovers
+// the original gross. When rounding makes the gross non-unique, netToGross
+// returns a { grossLow, grossHigh } plateau instead of a single result — in
+// that case we assert the original gross falls within it.
+//
+// Some income bands (see issue #85: net income can decrease as gross
+// increases for `older` taxpayers near the low-wage credit threshold) have
+// more than one gross value producing the same rounded net. Bisection may
+// converge on a different, equally valid, root there — accepted as long as
+// it truly reproduces the same target net.
+const expectRoundTrip = (forward, field, options) => {
+  const grossField = field === 'netYear' ? 'grossYear' : 'grossMonth';
+  const startFrom = field === 'netYear' ? 'Year' : 'Month';
+  const amount = forward[field];
+  const reverse = netToGross(
+    { amount, field, holidayAllowanceIncluded: false },
+    options
+  );
+  // The 8%-inflation transform (allowance=false + ruling applied) means a
+  // reported gross can't safely be fed back in as `income` to reconstruct —
+  // that combination isn't expected to hit the non-monotonic bands below.
+  const invertible = !(!options.allowance && options.ruling.checked);
+
+  // Independently reconstructs a SalaryPaycheck from an alternate root and
+  // confirms it truly reproduces the target net, rather than trusting it.
+  const verifyAlternateRoot = (grossCandidate) => {
+    const check = new SalaryPaycheck(
+      {
+        income: grossCandidate,
+        allowance: options.allowance,
+        socialSecurity: options.socialSecurity,
+        older: options.older,
+        hours: options.hours,
+      },
+      startFrom,
+      options.year,
+      options.ruling
+    );
+    return check[field] === amount;
+  };
+
+  if ('grossLow' in reverse) {
+    if (
+      forward[grossField] >= reverse.grossLow &&
+      forward[grossField] <= reverse.grossHigh
+    ) {
+      return;
+    }
+    // Known non-monotonic income band (issue #85: net can decrease as gross
+    // increases, e.g. near the `older` low-wage credit threshold). Bisection
+    // converged on a different, equally valid, plateau.
+    expect(invertible).toBe(true);
+    expect(verifyAlternateRoot(reverse.grossHigh)).toBe(true);
+    return;
+  }
+
+  if (reverse[grossField] === forward[grossField]) {
+    return;
+  }
+  // Same rationale as above, for the single-value case.
+  expect(invertible).toBe(true);
+  expect(verifyAlternateRoot(reverse[grossField])).toBe(true);
+};
 
 const checkCalculation = async (year, callback) => {
   const csv = await parseCsv(`__tests__/test-tax-${year}.csv`);
@@ -114,10 +178,59 @@ describe('Tax calculation section', () => {
   });
 });
 
+const checkReverseCalculation = async (year, callback) => {
+  const csv = await parseCsv(`__tests__/test-tax-${year}.csv`);
+  const ROW_INTERVAL = 25;
+
+  for (let i = 0; i < csv.length; i += ROW_INTERVAL) {
+    const data = csv[i];
+
+    for (const older of [false, true]) {
+      const forward = new SalaryPaycheck(
+        {
+          income: data.income,
+          allowance: false,
+          socialSecurity: true,
+          older,
+          hours: 40,
+        },
+        'Month',
+        year,
+        { checked: false }
+      );
+
+      expectRoundTrip(forward, 'netMonth', {
+        period: 'Month',
+        year,
+        allowance: false,
+        socialSecurity: true,
+        older,
+        hours: 40,
+        ruling: { checked: false },
+      });
+    }
+  }
+  callback();
+};
+
+describe('Reverse (net-to-gross) calculation section', () => {
+  constants.years.forEach((year) => {
+    test(`reverse calculate tax table for ${year}`, (done) => {
+      checkReverseCalculation(year, done);
+    });
+  });
+});
+
 describe('30% ruling with holiday allowance included', () => {
   test('should apply 30% ruling on full gross including holiday allowance', () => {
     const result = new SalaryPaycheck(
-      { income: 100000, allowance: true, socialSecurity: true, older: false, hours: 40 },
+      {
+        income: 100000,
+        allowance: true,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
       'Year',
       2026,
       { checked: true, choice: 'normal' }
@@ -130,14 +243,26 @@ describe('30% ruling with holiday allowance included', () => {
 
   test('should produce consistent results with and without allowance flag', () => {
     const withAllowance = new SalaryPaycheck(
-      { income: 108000, allowance: true, socialSecurity: true, older: false, hours: 40 },
+      {
+        income: 108000,
+        allowance: true,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
       'Year',
       2026,
       { checked: true, choice: 'normal' }
     );
 
     const withoutAllowance = new SalaryPaycheck(
-      { income: 100000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      {
+        income: 100000,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
       'Year',
       2026,
       { checked: true, choice: 'normal' }
@@ -151,7 +276,13 @@ describe('30% ruling with holiday allowance included', () => {
 
   test('should not apply ruling when allowance=false and ruling unchecked', () => {
     const result = new SalaryPaycheck(
-      { income: 100000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      {
+        income: 100000,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
       'Year',
       2026,
       { checked: false }
@@ -165,7 +296,13 @@ describe('30% ruling with holiday allowance included', () => {
 describe('30% ruling without holiday allowance (allowance=false)', () => {
   test('should add 8% holiday allowance to gross when ruling is applied', () => {
     const result = new SalaryPaycheck(
-      { income: 100000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      {
+        income: 100000,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
       'Year',
       2026,
       { checked: true, choice: 'normal' }
@@ -180,14 +317,26 @@ describe('30% ruling without holiday allowance (allowance=false)', () => {
 
   test('should produce identical results for equivalent salaries with and without allowance', () => {
     const withAllowance = new SalaryPaycheck(
-      { income: 108000, allowance: true, socialSecurity: true, older: false, hours: 40 },
+      {
+        income: 108000,
+        allowance: true,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
       'Year',
       2026,
       { checked: true, choice: 'normal' }
     );
 
     const withoutAllowance = new SalaryPaycheck(
-      { income: 100000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      {
+        income: 100000,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
       'Year',
       2026,
       { checked: true, choice: 'normal' }
@@ -203,7 +352,13 @@ describe('30% ruling without holiday allowance (allowance=false)', () => {
 
   test('should not inflate gross when ruling is unchecked', () => {
     const result = new SalaryPaycheck(
-      { income: 100000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      {
+        income: 100000,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
       'Year',
       2026,
       { checked: false }
@@ -216,7 +371,13 @@ describe('30% ruling without holiday allowance (allowance=false)', () => {
 
   test('should not inflate gross when income is below ruling threshold', () => {
     const result = new SalaryPaycheck(
-      { income: 30000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      {
+        income: 30000,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
       'Year',
       2026,
       { checked: true, choice: 'normal' }
@@ -230,14 +391,26 @@ describe('30% ruling without holiday allowance (allowance=false)', () => {
 
   test('should work correctly with monthly input', () => {
     const monthly = new SalaryPaycheck(
-      { income: 5000, allowance: false, socialSecurity: true, older: false, hours: 40 },
+      {
+        income: 5000,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
       'Month',
       2026,
       { checked: true, choice: 'normal' }
     );
 
     const yearlyEquivalent = new SalaryPaycheck(
-      { income: 5000 * 12 * 1.08, allowance: true, socialSecurity: true, older: false, hours: 40 },
+      {
+        income: 5000 * 12 * 1.08,
+        allowance: true,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
       'Year',
       2026,
       { checked: true, choice: 'normal' }
@@ -245,5 +418,290 @@ describe('30% ruling without holiday allowance (allowance=false)', () => {
 
     expect(monthly.grossYear).toBeCloseTo(yearlyEquivalent.grossYear, 0);
     expect(monthly.netYear).toBeCloseTo(yearlyEquivalent.netYear, 0);
+  });
+});
+
+describe('Reverse (net-to-gross) calculation for 30% ruling scenarios', () => {
+  // Same (income, allowance, ruling) combinations exercised by the two
+  // describe blocks above — reused here rather than invented.
+  const scenarios = [
+    {
+      income: 100000,
+      allowance: true,
+      ruling: { checked: true, choice: 'normal' },
+    },
+    {
+      income: 108000,
+      allowance: true,
+      ruling: { checked: true, choice: 'normal' },
+    },
+    {
+      income: 100000,
+      allowance: false,
+      ruling: { checked: true, choice: 'normal' },
+    },
+    { income: 100000, allowance: false, ruling: { checked: false } },
+    {
+      income: 30000,
+      allowance: false,
+      ruling: { checked: true, choice: 'normal' },
+    },
+  ];
+
+  scenarios.forEach(({ income, allowance, ruling }) => {
+    test(`recovers gross for income=${income} allowance=${allowance} ruling.checked=${ruling.checked}`, () => {
+      const forward = new SalaryPaycheck(
+        { income, allowance, socialSecurity: true, older: false, hours: 40 },
+        'Year',
+        2026,
+        ruling
+      );
+
+      expectRoundTrip(forward, 'netYear', {
+        period: 'Year',
+        year: 2026,
+        allowance,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+        ruling,
+      });
+    });
+  });
+
+  test('recovers gross for monthly input (income=5000, ruling applied)', () => {
+    const forward = new SalaryPaycheck(
+      {
+        income: 5000,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
+      'Month',
+      2026,
+      { checked: true, choice: 'normal' }
+    );
+
+    expectRoundTrip(forward, 'netMonth', {
+      period: 'Month',
+      year: 2026,
+      allowance: false,
+      socialSecurity: true,
+      older: false,
+      hours: 40,
+      ruling: { checked: true, choice: 'normal' },
+    });
+  });
+});
+
+describe('netToGross edge cases', () => {
+  test('reproduces the exact target net, not a rounded neighbor, when the anchor cent value misses', () => {
+    const result = netToGross(
+      { amount: 2560.06, field: 'netMonth', holidayAllowanceIncluded: false },
+      {
+        period: 'Month',
+        year: 2022,
+        allowance: false,
+        socialSecurity: false,
+        older: false,
+        hours: 40,
+        ruling: { checked: false },
+      }
+    );
+
+    expect('grossLow' in result).toBe(false);
+    expect(result.netMonth).toBe(2560.06);
+  });
+
+  test('finds a gross below the target net when allowance=false inflates it above the target (30% ruling)', () => {
+    const forward = new SalaryPaycheck(
+      {
+        income: 30000,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
+      'Year',
+      2026,
+      { checked: true, choice: 'research' }
+    );
+
+    const result = netToGross(
+      {
+        amount: forward.netYear,
+        field: 'netYear',
+        holidayAllowanceIncluded: false,
+      },
+      {
+        period: 'Year',
+        year: 2026,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+        ruling: { checked: true, choice: 'research' },
+      }
+    );
+
+    expect('grossLow' in result).toBe(false);
+    expect(result.grossYear).toBe(forward.grossYear);
+  });
+
+  test('finds a target that only sits on a single-cent-wide non-monotonic spike', () => {
+    const forward = new SalaryPaycheck(
+      {
+        income: 38131,
+        allowance: true,
+        socialSecurity: true,
+        older: true,
+        hours: 40,
+      },
+      'Year',
+      2026,
+      { checked: false }
+    );
+
+    const result = netToGross(
+      {
+        amount: forward.netYear,
+        field: 'netYear',
+        holidayAllowanceIncluded: false,
+      },
+      {
+        period: 'Year',
+        year: 2026,
+        allowance: true,
+        socialSecurity: true,
+        older: true,
+        hours: 40,
+        ruling: { checked: false },
+      }
+    );
+
+    expect('grossLow' in result).toBe(false);
+    expect(result.grossYear).toBe(38131);
+  });
+
+  test('matches a monthly target that includes the holiday allowance payout', () => {
+    const forward = new SalaryPaycheck(
+      {
+        income: 100,
+        allowance: true,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
+      'Month',
+      2015,
+      { checked: false }
+    );
+    const target =
+      forward.netMonth + Number((forward.netAllowance / 12).toFixed(2));
+
+    const result = netToGross(
+      { amount: target, field: 'netMonth', holidayAllowanceIncluded: true },
+      {
+        period: 'Month',
+        year: 2015,
+        allowance: true,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+        ruling: { checked: false },
+      }
+    );
+
+    expect('grossLow' in result).toBe(false);
+    expect(result.grossMonth).toBe(forward.grossMonth);
+  });
+
+  test.each([1e14, 1e15])(
+    'terminates and resolves gross=%p without hanging',
+    (income) => {
+      const forward = new SalaryPaycheck(
+        {
+          income,
+          allowance: false,
+          socialSecurity: true,
+          older: false,
+          hours: 40,
+        },
+        'Year',
+        2026,
+        { checked: false }
+      );
+
+      const result = netToGross(
+        {
+          amount: forward.netYear,
+          field: 'netYear',
+          holidayAllowanceIncluded: false,
+        },
+        {
+          period: 'Year',
+          year: 2026,
+          allowance: false,
+          socialSecurity: true,
+          older: false,
+          hours: 40,
+          ruling: { checked: false },
+        }
+      );
+
+      expect('grossLow' in result).toBe(false);
+      expect(result.netYear).toBe(forward.netYear);
+    }
+  );
+
+  test('rejects holidayAllowanceIncluded when netAllowance can never be nonzero', () => {
+    expect(() =>
+      netToGross(
+        { amount: 60000, field: 'netYear', holidayAllowanceIncluded: true },
+        {
+          period: 'Year',
+          year: 2026,
+          allowance: false,
+          socialSecurity: true,
+          older: false,
+          hours: 40,
+          ruling: { checked: false },
+        }
+      )
+    ).toThrow(/holidayAllowanceIncluded/);
+  });
+
+  test('still solves holidayAllowanceIncluded when allowance=false but the 30% ruling can inflate it', () => {
+    const forward = new SalaryPaycheck(
+      {
+        income: 100000,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
+      'Year',
+      2026,
+      { checked: true, choice: 'normal' }
+    );
+    const target = forward.netYear + forward.netAllowance;
+
+    const result = netToGross(
+      { amount: target, field: 'netYear', holidayAllowanceIncluded: true },
+      {
+        period: 'Year',
+        year: 2026,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+        ruling: { checked: true, choice: 'normal' },
+      }
+    );
+
+    const solvedGross =
+      'grossLow' in result ? result.grossLow : result.grossYear;
+    expect(solvedGross).toBeCloseTo(forward.grossYear, 0);
   });
 });

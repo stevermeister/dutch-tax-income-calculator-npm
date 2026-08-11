@@ -8,7 +8,7 @@ export interface SalaryInput {
 
 export interface RulingInput {
   checked: boolean;
-  type?: 'researchWorker' | 'youngProfessional' | 'other';
+  choice?: 'normal' | 'young' | 'research';
 }
 
 export class SalaryPaycheck {
@@ -176,3 +176,42 @@ export interface Constants {
 }
 
 export const constants: Constants;
+
+export interface NetToGrossTarget {
+  amount: number;
+  field: 'netYear' | 'netMonth';
+  /**
+   * Whether amount already includes the holiday allowance payout. Requires
+   * options.allowance or options.ruling.checked — SalaryPaycheck otherwise
+   * always computes netAllowance as 0, so netToGross throws instead of
+   * silently ignoring this flag.
+   */
+  holidayAllowanceIncluded: boolean;
+}
+
+export interface NetToGrossOptions {
+  period: 'Year' | 'Month';
+  year: number;
+  allowance: boolean;
+  socialSecurity: boolean;
+  older: boolean;
+  hours: number;
+  ruling: RulingInput;
+}
+
+export interface GrossPlateau {
+  grossLow: number;
+  grossHigh: number;
+}
+
+/**
+ * Reverse calculation: given a target net amount, find the gross that produces it.
+ *
+ * @param {NetToGrossTarget} target Target net figure to solve for
+ * @param {NetToGrossOptions} options Same shape SalaryPaycheck accepts
+ * @returns {SalaryPaycheck|GrossPlateau} The solved SalaryPaycheck result, or the plateau bounds when rounding makes the gross non-unique
+ */
+export function netToGross(
+  target: NetToGrossTarget,
+  options: NetToGrossOptions
+): SalaryPaycheck | GrossPlateau;
