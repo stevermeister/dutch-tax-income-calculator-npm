@@ -548,11 +548,16 @@ const netToGross = (target, options) => {
   // the whole search range.
   const fineWindowLow = roundNumber(Math.max(low, nearest.grossGuess - 2), 2);
   const fineWindowHigh = roundNumber(Math.min(high, nearest.grossGuess + 2), 2);
-  for (
-    let gross = fineWindowLow;
-    gross <= fineWindowHigh;
-    gross = roundNumber(gross + 0.01, 2)
-  ) {
+  // Stepping by adding 0.01 in a loop condition can stall forever once gross
+  // is large enough that floating-point spacing exceeds a cent (e.g. ~1e15),
+  // since gross + 0.01 then rounds back to gross itself. Bound by an integer
+  // step count instead so the loop always terminates.
+  const fineSteps = Math.max(
+    0,
+    Math.round((fineWindowHigh - fineWindowLow) / 0.01)
+  );
+  for (let i = 0; i <= fineSteps; i++) {
+    const gross = roundNumber(fineWindowLow + i * 0.01, 2);
     const point = evaluate(gross);
     updateNearest(point);
     if (matches(point.net)) {

@@ -616,4 +616,38 @@ describe('netToGross edge cases', () => {
     expect('grossLow' in result).toBe(false);
     expect(result.grossMonth).toBe(forward.grossMonth);
   });
+
+  test('terminates instead of hanging when gross magnitude exceeds cent precision', () => {
+    const forward = new SalaryPaycheck(
+      {
+        income: 1e15,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
+      'Year',
+      2026,
+      { checked: false }
+    );
+
+    expect(() =>
+      netToGross(
+        {
+          amount: forward.netYear,
+          field: 'netYear',
+          holidayAllowanceIncluded: false,
+        },
+        {
+          period: 'Year',
+          year: 2026,
+          allowance: false,
+          socialSecurity: true,
+          older: false,
+          hours: 40,
+          ruling: { checked: false },
+        }
+      )
+    ).toThrow(/nearest achievable net/);
+  });
 });
