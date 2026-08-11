@@ -330,6 +330,7 @@ const roundNumber = (value, places = 2) => {
 const NET_TO_GROSS_MAX_ITERATIONS = 30;
 const NET_TO_GROSS_MATCH_EPSILON = 1e-6;
 const NET_TO_GROSS_PLATEAU_SCAN_LIMIT = 1000; // cent steps each direction (±10.00)
+const NET_TO_GROSS_COARSE_SCAN_STEPS = 4096; // fallback bracket search only
 
 /**
  * Reverse calculation: given a target net amount, find the gross that produces it.
@@ -393,10 +394,32 @@ const netToGross = (target, options) => {
   // Find the exact cent-granularity plateau of gross (income) values that all
   // round to the same target net (SalaryPaycheck rounds every internal amount
   // to 2 decimals, so a range of inputs can share one rounded net output).
+  //
+  // anchorGross is a raw (unrounded) value already confirmed to match the
+  // target net. Rounding it to cents does not always preserve that match
+  // (intermediate bracket rounding is sensitive to the exact fractional
+  // gross), so the rounded anchor is re-verified before it is trusted as the
+  // start of the cent-by-cent scan.
   const findPlateau = (anchorGross) => {
-    const anchor = roundNumber(anchorGross, 2);
-    let rawLow = anchor;
-    let rawHigh = anchor;
+    const anchorResult = evaluate(anchorGross).result;
+    const anchorRounded = roundNumber(anchorGross, 2);
+    // Rounding can land just outside the matching cent value in either
+    // direction, so probe both neighbors before giving up on a clean
+    // cent-aligned seed.
+    const seed = [
+      anchorRounded,
+      roundNumber(anchorRounded - 0.01, 2),
+      roundNumber(anchorRounded + 0.01, 2),
+    ].find((candidate) => matches(evaluate(candidate).net));
+
+    if (seed === undefined) {
+      // No clean cent-aligned gross near the solution reproduces the target
+      // net exactly; return the raw solution rather than rounding it away.
+      return anchorResult;
+    }
+
+    let rawLow = seed;
+    let rawHigh = seed;
     for (let i = 0; i < NET_TO_GROSS_PLATEAU_SCAN_LIMIT; i++) {
       const candidate = roundNumber(rawLow - 0.01, 2);
       if (!matches(evaluate(candidate).net)) break;
@@ -423,9 +446,12 @@ const netToGross = (target, options) => {
     return { grossLow, grossHigh };
   };
 
-  let low = amount;
+  // Gross is not guaranteed to be >= net: when allowance=false and the 30%
+  // ruling applies, SalaryPaycheck inflates the supplied income by 8% before
+  // taxing it, so the true root can sit below the target net. 0 is the only
+  // sound universal lower bound.
+  let low = 0;
   let high = amount * 3;
-  let lowPoint = evaluate(low);
   let highPoint = evaluate(high);
 
   let expansions = 0;
@@ -434,40 +460,103 @@ const netToGross = (target, options) => {
     highPoint = evaluate(high);
     expansions++;
   }
-
-  if (lowPoint.net > amount) {
-    throw new Error(
-      `netToGross: target net ${amount} is below the achievable range; the nearest achievable net at gross ${low} is ${lowPoint.net}`
-    );
-  }
   if (highPoint.net < amount) {
     throw new Error(
       `netToGross: target net ${amount} is not achievable within the search bounds; the nearest achievable net at gross ${high} is ${highPoint.net}`
     );
   }
 
-  for (let i = 0; i < NET_TO_GROSS_MAX_ITERATIONS; i++) {
-    const midGross = (low + high) / 2;
-    const midPoint = evaluate(midGross);
-
-    if (matches(midPoint.net)) {
-      return findPlateau(midPoint.grossGuess);
+  // Single-bracket bisection assumes net is monotonic in gross. Try the fast
+  // path first; it succeeds for the vast majority of inputs.
+  const bisect = (bracketLow, bracketHigh) => {
+    let bLow = bracketLow;
+    let bHigh = bracketHigh;
+    let bLowPoint = evaluate(bLow);
+    let bHighPoint = evaluate(bHigh);
+    for (let i = 0; i < NET_TO_GROSS_MAX_ITERATIONS; i++) {
+      const midGross = (bLow + bHigh) / 2;
+      const midPoint = evaluate(midGross);
+      if (matches(midPoint.net)) {
+        return { hit: findPlateau(midPoint.grossGuess) };
+      }
+      if (midPoint.net < amount) {
+        bLow = midGross;
+        bLowPoint = midPoint;
+      } else {
+        bHigh = midGross;
+        bHighPoint = midPoint;
+      }
     }
-    if (midPoint.net < amount) {
-      low = midGross;
-      lowPoint = midPoint;
-    } else {
-      high = midGross;
-      highPoint = midPoint;
+    const nearest =
+      Math.abs(bLowPoint.net - amount) <= Math.abs(bHighPoint.net - amount)
+        ? bLowPoint
+        : bHighPoint;
+    return { nearest };
+  };
+
+  const fastPath = bisect(low, high);
+  if (fastPath.hit) {
+    return fastPath.hit;
+  }
+
+  // The fast path didn't converge on an exact match. Net income is not
+  // guaranteed to be monotonic in gross (see issue #85: net can decrease as
+  // gross increases in narrow income bands), so a single bisection can
+  // converge on the wrong side of a local dip and miss an otherwise
+  // achievable target. Fall back to a coarse scan for every bracket where
+  // net crosses the target, and bisect within each candidate bracket.
+  const step = (high - low) / NET_TO_GROSS_COARSE_SCAN_STEPS;
+  let prevGross = low;
+  let prevPoint = evaluate(prevGross);
+  let nearest = prevPoint;
+  const updateNearest = (point) => {
+    if (Math.abs(point.net - amount) < Math.abs(nearest.net - amount)) {
+      nearest = point;
+    }
+  };
+
+  for (let i = 1; i <= NET_TO_GROSS_COARSE_SCAN_STEPS; i++) {
+    const gross = low + step * i;
+    const point = evaluate(gross);
+    updateNearest(point);
+
+    const crosses = (prevPoint.net - amount) * (point.net - amount) < 0;
+    if (matches(point.net)) {
+      return findPlateau(point.grossGuess);
+    }
+    if (crosses) {
+      const bracketResult = bisect(prevGross, gross);
+      if (bracketResult.hit) {
+        return bracketResult.hit;
+      }
+      updateNearest(bracketResult.nearest);
+    }
+
+    prevGross = gross;
+    prevPoint = point;
+  }
+
+  // Last resort: some non-monotonic bands are only a single cent wide (a
+  // brief spike or dip that the coarse scan can straddle without landing
+  // inside it). A bounded cent-by-cent scan right around the closest miss
+  // found so far catches those without paying for cent resolution across
+  // the whole search range.
+  const fineWindowLow = roundNumber(Math.max(low, nearest.grossGuess - 2), 2);
+  const fineWindowHigh = roundNumber(Math.min(high, nearest.grossGuess + 2), 2);
+  for (
+    let gross = fineWindowLow;
+    gross <= fineWindowHigh;
+    gross = roundNumber(gross + 0.01, 2)
+  ) {
+    const point = evaluate(gross);
+    updateNearest(point);
+    if (matches(point.net)) {
+      return findPlateau(point.grossGuess);
     }
   }
 
-  const nearest =
-    Math.abs(lowPoint.net - amount) <= Math.abs(highPoint.net - amount)
-      ? lowPoint
-      : highPoint;
   throw new Error(
-    `netToGross: no gross value converges to the exact target net of ${amount} after ${NET_TO_GROSS_MAX_ITERATIONS} iterations; nearest achievable net is ${nearest.net} (${grossField}: ${nearest.result[grossField]})`
+    `netToGross: no gross value converges to the exact target net of ${amount}; nearest achievable net is ${nearest.net} (${grossField}: ${nearest.result[grossField]})`
   );
 };
 

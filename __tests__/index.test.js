@@ -494,3 +494,93 @@ describe('Reverse (net-to-gross) calculation for 30% ruling scenarios', () => {
     });
   });
 });
+
+describe('netToGross edge cases', () => {
+  test('reproduces the exact target net, not a rounded neighbor, when the anchor cent value misses', () => {
+    const result = netToGross(
+      { amount: 2560.06, field: 'netMonth', holidayAllowanceIncluded: false },
+      {
+        period: 'Month',
+        year: 2022,
+        allowance: false,
+        socialSecurity: false,
+        older: false,
+        hours: 40,
+        ruling: { checked: false },
+      }
+    );
+
+    expect('grossLow' in result).toBe(false);
+    expect(result.netMonth).toBe(2560.06);
+  });
+
+  test('finds a gross below the target net when allowance=false inflates it above the target (30% ruling)', () => {
+    const forward = new SalaryPaycheck(
+      {
+        income: 30000,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
+      'Year',
+      2026,
+      { checked: true, choice: 'research' }
+    );
+
+    const result = netToGross(
+      {
+        amount: forward.netYear,
+        field: 'netYear',
+        holidayAllowanceIncluded: false,
+      },
+      {
+        period: 'Year',
+        year: 2026,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+        ruling: { checked: true, choice: 'research' },
+      }
+    );
+
+    expect('grossLow' in result).toBe(false);
+    expect(result.grossYear).toBe(forward.grossYear);
+  });
+
+  test('finds a target that only sits on a single-cent-wide non-monotonic spike', () => {
+    const forward = new SalaryPaycheck(
+      {
+        income: 38131,
+        allowance: true,
+        socialSecurity: true,
+        older: true,
+        hours: 40,
+      },
+      'Year',
+      2026,
+      { checked: false }
+    );
+
+    const result = netToGross(
+      {
+        amount: forward.netYear,
+        field: 'netYear',
+        holidayAllowanceIncluded: false,
+      },
+      {
+        period: 'Year',
+        year: 2026,
+        allowance: true,
+        socialSecurity: true,
+        older: true,
+        hours: 40,
+        ruling: { checked: false },
+      }
+    );
+
+    expect('grossLow' in result).toBe(false);
+    expect(result.grossYear).toBe(38131);
+  });
+});
