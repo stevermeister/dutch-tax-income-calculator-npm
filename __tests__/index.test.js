@@ -583,4 +583,37 @@ describe('netToGross edge cases', () => {
     expect('grossLow' in result).toBe(false);
     expect(result.grossYear).toBe(38131);
   });
+
+  test('matches a monthly target that includes the holiday allowance payout', () => {
+    const forward = new SalaryPaycheck(
+      {
+        income: 100,
+        allowance: true,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
+      'Month',
+      2015,
+      { checked: false }
+    );
+    const target =
+      forward.netMonth + Number((forward.netAllowance / 12).toFixed(2));
+
+    const result = netToGross(
+      { amount: target, field: 'netMonth', holidayAllowanceIncluded: true },
+      {
+        period: 'Month',
+        year: 2015,
+        allowance: true,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+        ruling: { checked: false },
+      }
+    );
+
+    expect('grossLow' in result).toBe(false);
+    expect(result.grossMonth).toBe(forward.grossMonth);
+  });
 });

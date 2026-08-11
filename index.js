@@ -373,10 +373,15 @@ const netToGross = (target, options) => {
     if (!holidayAllowanceIncluded) {
       return base;
     }
-    return (
-      base +
-      (field === 'netYear' ? result.netAllowance : result.netAllowance / 12)
-    );
+    // Dividing the annual (already 2-decimal) netAllowance by 12 produces
+    // fractional cents, so a clean 2-decimal monthly target could never
+    // satisfy the match tolerance. Round it to cents first, same as every
+    // other monthly figure SalaryPaycheck derives (see getAmountMonth).
+    const allowancePortion =
+      field === 'netYear'
+        ? result.netAllowance
+        : roundNumber(result.netAllowance / 12, 2);
+    return base + allowancePortion;
   };
 
   const evaluate = (grossGuess) => {
