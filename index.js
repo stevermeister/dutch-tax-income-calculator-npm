@@ -483,6 +483,19 @@ const netToGross = (target, options) => {
     );
   }
 
+  // A fixed 30 iterations only reaches cent resolution while the bracket is
+  // reasonably small; for very large gross magnitudes (e.g. >1e12) it can
+  // leave a remaining bracket far wider than a cent. Scale the iteration
+  // count to the bracket width instead, capped generously since each extra
+  // iteration is cheap.
+  const bisectIterationsFor = (width) => {
+    if (!(width > 0)) {
+      return NET_TO_GROSS_MAX_ITERATIONS;
+    }
+    const needed = Math.ceil(Math.log2(width / 0.005)) + 4;
+    return Math.min(200, Math.max(NET_TO_GROSS_MAX_ITERATIONS, needed));
+  };
+
   // Single-bracket bisection assumes net is monotonic in gross. Try the fast
   // path first; it succeeds for the vast majority of inputs.
   const bisect = (bracketLow, bracketHigh) => {
@@ -490,8 +503,14 @@ const netToGross = (target, options) => {
     let bHigh = bracketHigh;
     let bLowPoint = evaluate(bLow);
     let bHighPoint = evaluate(bHigh);
-    for (let i = 0; i < NET_TO_GROSS_MAX_ITERATIONS; i++) {
+    const iterations = bisectIterationsFor(bHigh - bLow);
+    for (let i = 0; i < iterations; i++) {
       const midGross = (bLow + bHigh) / 2;
+      if (midGross === bLow || midGross === bHigh) {
+        // Floating-point spacing between bLow and bHigh is exhausted; no
+        // further narrowing is possible.
+        break;
+      }
       const midPoint = evaluate(midGross);
       if (matches(midPoint.net)) {
         return { hit: findPlateau(midPoint.grossGuess) };
@@ -508,7 +527,7 @@ const netToGross = (target, options) => {
       Math.abs(bLowPoint.net - amount) <= Math.abs(bHighPoint.net - amount)
         ? bLowPoint
         : bHighPoint;
-    return { nearest };
+    return { nearest, bracketLow: bLow, bracketHigh: bHigh };
   };
 
   const fastPath = bisect(low, high);
@@ -522,20 +541,24 @@ const netToGross = (target, options) => {
   // converge on the wrong side of a local dip and miss an otherwise
   // achievable target. Fall back to a coarse scan for every bracket where
   // net crosses the target, and bisect within each candidate bracket.
+  let nearest = fastPath.nearest;
+  let nearestBracketWidth = fastPath.bracketHigh - fastPath.bracketLow;
+  const updateNearest = (point, bracketWidth = 0) => {
+    if (Math.abs(point.net - amount) < Math.abs(nearest.net - amount)) {
+      nearest = point;
+      nearestBracketWidth = bracketWidth;
+    }
+  };
+
   const step = (high - low) / NET_TO_GROSS_COARSE_SCAN_STEPS;
   let prevGross = low;
   let prevPoint = evaluate(prevGross);
-  let nearest = prevPoint;
-  const updateNearest = (point) => {
-    if (Math.abs(point.net - amount) < Math.abs(nearest.net - amount)) {
-      nearest = point;
-    }
-  };
+  updateNearest(prevPoint);
 
   for (let i = 1; i <= NET_TO_GROSS_COARSE_SCAN_STEPS; i++) {
     const gross = low + step * i;
     const point = evaluate(gross);
-    updateNearest(point);
+    updateNearest(point, step);
 
     const crosses = (prevPoint.net - amount) * (point.net - amount) < 0;
     if (matches(point.net)) {
@@ -546,7 +569,10 @@ const netToGross = (target, options) => {
       if (bracketResult.hit) {
         return bracketResult.hit;
       }
-      updateNearest(bracketResult.nearest);
+      updateNearest(
+        bracketResult.nearest,
+        bracketResult.bracketHigh - bracketResult.bracketLow
+      );
     }
 
     prevGross = gross;
@@ -557,9 +583,19 @@ const netToGross = (target, options) => {
   // brief spike or dip that the coarse scan can straddle without landing
   // inside it). A bounded cent-by-cent scan right around the closest miss
   // found so far catches those without paying for cent resolution across
-  // the whole search range.
-  const fineWindowLow = roundNumber(Math.max(low, nearest.grossGuess - 2), 2);
-  const fineWindowHigh = roundNumber(Math.min(high, nearest.grossGuess + 2), 2);
+  // the whole search range. Size the window from whatever bracket produced
+  // the closest miss — a fixed small window can be narrower than the
+  // remaining uncertainty for very large gross magnitudes, excluding the
+  // actual root.
+  const fineRadius = Math.min(50, Math.max(2, nearestBracketWidth));
+  const fineWindowLow = roundNumber(
+    Math.max(low, nearest.grossGuess - fineRadius),
+    2
+  );
+  const fineWindowHigh = roundNumber(
+    Math.min(high, nearest.grossGuess + fineRadius),
+    2
+  );
   // Stepping by adding 0.01 in a loop condition can stall forever once gross
   // is large enough that floating-point spacing exceeds a cent (e.g. ~1e15),
   // since gross + 0.01 then rounds back to gross itself. Bound by an integer

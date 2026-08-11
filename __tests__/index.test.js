@@ -617,22 +617,23 @@ describe('netToGross edge cases', () => {
     expect(result.grossMonth).toBe(forward.grossMonth);
   });
 
-  test('terminates instead of hanging when gross magnitude exceeds cent precision', () => {
-    const forward = new SalaryPaycheck(
-      {
-        income: 1e15,
-        allowance: false,
-        socialSecurity: true,
-        older: false,
-        hours: 40,
-      },
-      'Year',
-      2026,
-      { checked: false }
-    );
+  test.each([1e14, 1e15])(
+    'terminates and resolves gross=%p without hanging',
+    (income) => {
+      const forward = new SalaryPaycheck(
+        {
+          income,
+          allowance: false,
+          socialSecurity: true,
+          older: false,
+          hours: 40,
+        },
+        'Year',
+        2026,
+        { checked: false }
+      );
 
-    expect(() =>
-      netToGross(
+      const result = netToGross(
         {
           amount: forward.netYear,
           field: 'netYear',
@@ -647,9 +648,12 @@ describe('netToGross edge cases', () => {
           hours: 40,
           ruling: { checked: false },
         }
-      )
-    ).toThrow(/nearest achievable net/);
-  });
+      );
+
+      expect('grossLow' in result).toBe(false);
+      expect(result.netYear).toBe(forward.netYear);
+    }
+  );
 
   test('rejects holidayAllowanceIncluded when netAllowance can never be nonzero', () => {
     expect(() =>
