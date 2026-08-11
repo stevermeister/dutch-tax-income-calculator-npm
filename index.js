@@ -327,4 +327,148 @@ const roundNumber = (value, places = 2) => {
   return Number(value.toFixed(places));
 };
 
-export { SalaryPaycheck, constants };
+const NET_TO_GROSS_MAX_ITERATIONS = 30;
+const NET_TO_GROSS_MATCH_EPSILON = 1e-6;
+const NET_TO_GROSS_PLATEAU_SCAN_LIMIT = 1000; // cent steps each direction (±10.00)
+
+/**
+ * Reverse calculation: given a target net amount, find the gross that produces it.
+ *
+ * @param {object} target Target net figure to solve for
+ * @param {number} target.amount Target net amount
+ * @param {'netYear'|'netMonth'} target.field Which net field the amount refers to
+ * @param {boolean} target.holidayAllowanceIncluded Whether target.amount already includes the holiday allowance payout
+ * @param {object} options Same shape SalaryPaycheck accepts
+ * @param {'Year'|'Month'} options.period Must match target.field ('Year' for netYear, 'Month' for netMonth)
+ * @param {number} options.year Year to perform calculation
+ * @param {boolean} options.allowance Whether the solved gross should be treated as including holiday allowance
+ * @param {boolean} options.socialSecurity Whether social security is considered
+ * @param {boolean} options.older Whether is after retirement age or not
+ * @param {number} options.hours Working hours per week
+ * @param {object} options.ruling 30% ruling input, same shape SalaryPaycheck accepts
+ * @returns {SalaryPaycheck|{grossLow: number, grossHigh: number}} The solved SalaryPaycheck result, or the plateau bounds when rounding makes the gross non-unique
+ */
+const netToGross = (target, options) => {
+  const { amount, field, holidayAllowanceIncluded } = target || {};
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) {
+    throw new Error('netToGross: target.amount must be a finite number');
+  }
+  if (field !== 'netYear' && field !== 'netMonth') {
+    throw new Error("netToGross: target.field must be 'netYear' or 'netMonth'");
+  }
+
+  const { period, year, allowance, socialSecurity, older, hours, ruling } =
+    options || {};
+  const expectedPeriod = field === 'netYear' ? 'Year' : 'Month';
+  if (period !== expectedPeriod) {
+    throw new Error(
+      `netToGross: options.period must be '${expectedPeriod}' to match target.field '${field}'`
+    );
+  }
+  const grossField = expectedPeriod === 'Year' ? 'grossYear' : 'grossMonth';
+
+  const netOf = (result) => {
+    const base = result[field];
+    if (!holidayAllowanceIncluded) {
+      return base;
+    }
+    return (
+      base +
+      (field === 'netYear' ? result.netAllowance : result.netAllowance / 12)
+    );
+  };
+
+  const evaluate = (grossGuess) => {
+    const result = new SalaryPaycheck(
+      { income: grossGuess, allowance, socialSecurity, older, hours },
+      period,
+      year,
+      ruling
+    );
+    return { grossGuess, result, net: netOf(result) };
+  };
+
+  const matches = (net) => Math.abs(net - amount) < NET_TO_GROSS_MATCH_EPSILON;
+
+  // Find the exact cent-granularity plateau of gross (income) values that all
+  // round to the same target net (SalaryPaycheck rounds every internal amount
+  // to 2 decimals, so a range of inputs can share one rounded net output).
+  const findPlateau = (anchorGross) => {
+    const anchor = roundNumber(anchorGross, 2);
+    let rawLow = anchor;
+    let rawHigh = anchor;
+    for (let i = 0; i < NET_TO_GROSS_PLATEAU_SCAN_LIMIT; i++) {
+      const candidate = roundNumber(rawLow - 0.01, 2);
+      if (!matches(evaluate(candidate).net)) break;
+      rawLow = candidate;
+    }
+    for (let i = 0; i < NET_TO_GROSS_PLATEAU_SCAN_LIMIT; i++) {
+      const candidate = roundNumber(rawHigh + 0.01, 2);
+      if (!matches(evaluate(candidate).net)) break;
+      rawHigh = candidate;
+    }
+    if (rawLow === rawHigh) {
+      return evaluate(rawLow).result;
+    }
+    // The income fed into SalaryPaycheck is not always the reported gross
+    // (e.g. the 8%-holiday-allowance inflation), so translate the plateau
+    // edges through the actual reported field before reporting it.
+    const edgeA = evaluate(rawLow).result[grossField];
+    const edgeB = evaluate(rawHigh).result[grossField];
+    const grossLow = Math.min(edgeA, edgeB);
+    const grossHigh = Math.max(edgeA, edgeB);
+    if (grossLow === grossHigh) {
+      return evaluate(rawLow).result;
+    }
+    return { grossLow, grossHigh };
+  };
+
+  let low = amount;
+  let high = amount * 3;
+  let lowPoint = evaluate(low);
+  let highPoint = evaluate(high);
+
+  let expansions = 0;
+  while (highPoint.net < amount && expansions < NET_TO_GROSS_MAX_ITERATIONS) {
+    high *= 2;
+    highPoint = evaluate(high);
+    expansions++;
+  }
+
+  if (lowPoint.net > amount) {
+    throw new Error(
+      `netToGross: target net ${amount} is below the achievable range; the nearest achievable net at gross ${low} is ${lowPoint.net}`
+    );
+  }
+  if (highPoint.net < amount) {
+    throw new Error(
+      `netToGross: target net ${amount} is not achievable within the search bounds; the nearest achievable net at gross ${high} is ${highPoint.net}`
+    );
+  }
+
+  for (let i = 0; i < NET_TO_GROSS_MAX_ITERATIONS; i++) {
+    const midGross = (low + high) / 2;
+    const midPoint = evaluate(midGross);
+
+    if (matches(midPoint.net)) {
+      return findPlateau(midPoint.grossGuess);
+    }
+    if (midPoint.net < amount) {
+      low = midGross;
+      lowPoint = midPoint;
+    } else {
+      high = midGross;
+      highPoint = midPoint;
+    }
+  }
+
+  const nearest =
+    Math.abs(lowPoint.net - amount) <= Math.abs(highPoint.net - amount)
+      ? lowPoint
+      : highPoint;
+  throw new Error(
+    `netToGross: no gross value converges to the exact target net of ${amount} after ${NET_TO_GROSS_MAX_ITERATIONS} iterations; nearest achievable net is ${nearest.net} (${grossField}: ${nearest.result[grossField]})`
+  );
+};
+
+export { SalaryPaycheck, constants, netToGross };
