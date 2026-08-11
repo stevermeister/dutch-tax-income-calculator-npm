@@ -180,6 +180,12 @@ export const constants: Constants;
 export interface NetToGrossTarget {
   amount: number;
   field: 'netYear' | 'netMonth';
+  /**
+   * Whether amount already includes the holiday allowance payout. Requires
+   * options.allowance or options.ruling.checked — SalaryPaycheck otherwise
+   * always computes netAllowance as 0, so netToGross throws instead of
+   * silently ignoring this flag.
+   */
   holidayAllowanceIncluded: boolean;
 }
 

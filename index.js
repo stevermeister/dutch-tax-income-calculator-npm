@@ -338,7 +338,7 @@ const NET_TO_GROSS_COARSE_SCAN_STEPS = 4096; // fallback bracket search only
  * @param {object} target Target net figure to solve for
  * @param {number} target.amount Target net amount
  * @param {'netYear'|'netMonth'} target.field Which net field the amount refers to
- * @param {boolean} target.holidayAllowanceIncluded Whether target.amount already includes the holiday allowance payout
+ * @param {boolean} target.holidayAllowanceIncluded Whether target.amount already includes the holiday allowance payout. Requires options.allowance or options.ruling.checked — SalaryPaycheck otherwise always computes netAllowance as 0, so this throws rather than silently ignoring the flag
  * @param {object} options Same shape SalaryPaycheck accepts
  * @param {'Year'|'Month'} options.period Must match target.field ('Year' for netYear, 'Month' for netMonth)
  * @param {number} options.year Year to perform calculation
@@ -367,6 +367,18 @@ const netToGross = (target, options) => {
     );
   }
   const grossField = expectedPeriod === 'Year' ? 'grossYear' : 'grossMonth';
+
+  // SalaryPaycheck only ever computes a nonzero netAllowance when allowance
+  // is true, or when the 30% ruling inflates it internally (gross-dependent,
+  // so it can't be ruled out up front). If neither can ever happen, no gross
+  // can satisfy a target that claims to include a holiday allowance payout
+  // that SalaryPaycheck will never compute — reject rather than silently
+  // solving for the plain net instead.
+  if (holidayAllowanceIncluded && !allowance && !(ruling && ruling.checked)) {
+    throw new Error(
+      'netToGross: target.holidayAllowanceIncluded requires options.allowance or options.ruling.checked — otherwise SalaryPaycheck always computes netAllowance as 0'
+    );
+  }
 
   const netOf = (result) => {
     const base = result[field];

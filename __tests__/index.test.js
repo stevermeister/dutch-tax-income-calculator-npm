@@ -650,4 +650,54 @@ describe('netToGross edge cases', () => {
       )
     ).toThrow(/nearest achievable net/);
   });
+
+  test('rejects holidayAllowanceIncluded when netAllowance can never be nonzero', () => {
+    expect(() =>
+      netToGross(
+        { amount: 60000, field: 'netYear', holidayAllowanceIncluded: true },
+        {
+          period: 'Year',
+          year: 2026,
+          allowance: false,
+          socialSecurity: true,
+          older: false,
+          hours: 40,
+          ruling: { checked: false },
+        }
+      )
+    ).toThrow(/holidayAllowanceIncluded/);
+  });
+
+  test('still solves holidayAllowanceIncluded when allowance=false but the 30% ruling can inflate it', () => {
+    const forward = new SalaryPaycheck(
+      {
+        income: 100000,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+      },
+      'Year',
+      2026,
+      { checked: true, choice: 'normal' }
+    );
+    const target = forward.netYear + forward.netAllowance;
+
+    const result = netToGross(
+      { amount: target, field: 'netYear', holidayAllowanceIncluded: true },
+      {
+        period: 'Year',
+        year: 2026,
+        allowance: false,
+        socialSecurity: true,
+        older: false,
+        hours: 40,
+        ruling: { checked: true, choice: 'normal' },
+      }
+    );
+
+    const solvedGross =
+      'grossLow' in result ? result.grossLow : result.grossYear;
+    expect(solvedGross).toBeCloseTo(forward.grossYear, 0);
+  });
 });
